@@ -4,6 +4,8 @@ export type BillingResult<T> = { data: T } | { error: { code: string; message: s
 
 export interface BillingPlan {
   key: string;
+  /** Stripe lookup keys are stable commercial identifiers, not database IDs. */
+  lookupKey?: string;
   name: string;
   description?: string | null;
   amountMinor: number;
@@ -149,7 +151,7 @@ export class StripeBillingAdapter implements BillingProvider {
   }
 
   private async ensurePrice(plan: BillingPlan): Promise<BillingResult<{ priceId: string; productId: string }>> {
-    const lookupKey = `empleado24_${plan.key}_monthly`;
+    const lookupKey = plan.lookupKey ?? `empleado24_${plan.key}_monthly`;
     const prices = await this.request<StripeObject & { data?: Array<StripeObject & { active?: boolean; unit_amount?: number; currency?: string; product?: string; recurring?: { interval?: string; interval_count?: number } }> }>(`/v1/prices?active=true&lookup_keys[]=${encodeURIComponent(lookupKey)}&limit=10`);
     if ('error' in prices) return prices;
     const matching = prices.data.data?.find((price) => price.unit_amount === plan.amountMinor && price.currency?.toUpperCase() === plan.currency.toUpperCase() && price.recurring?.interval === 'month' && price.recurring.interval_count === 1);
