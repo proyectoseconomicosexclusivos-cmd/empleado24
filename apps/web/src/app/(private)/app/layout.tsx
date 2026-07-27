@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Bell, Clock3, CreditCard, Headphones, Home, PlugZap, Settings, Sparkles } from 'lucide-react';
+import { Bell, Clock3, CreditCard, Headphones, Home, Mail, PlugZap, Settings, Sparkles } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { AuthService } from '@/services/auth-service';
@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/server';
 const navigation = [
   { href: '/app', label: 'Mi oficina', icon: Home },
   { href: '/app/recepcionista', label: 'Mi Recepcionista', icon: Headphones },
+  { href: '/app/especialista-email', label: 'Especialista Email', icon: Mail },
   { href: '/app#jornada', label: 'Actividad', icon: Clock3 },
   { href: '/app#avisos', label: 'Avisos', icon: Bell },
   { href: '/app/configuracion', label: 'Su forma de trabajar', icon: Settings },
