@@ -28,7 +28,7 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
 
   return (
     <main className="mx-auto max-w-6xl px-5 py-10 md:px-10 md:py-14">
-      <header className="max-w-3xl"><p className="eyebrow">Conexiones</p><h1 className="mt-3 text-4xl font-semibold tracking-[-.06em] md:text-5xl">Dale acceso a lo que necesita para trabajar.</h1><p className="mt-4 leading-7 text-[var(--muted)]">Cada conexión pertenece únicamente a {company.name}. Hasta que una herramienta esté verificada, tu Recepcionista no afirmará que puede utilizarla.</p></header>
+      <header className="max-w-3xl"><p className="eyebrow">Conexiones</p><h1 className="mt-3 text-4xl font-semibold tracking-[-.06em] md:text-5xl">Dale a cada empleado lo que necesita para trabajar.</h1><p className="mt-4 leading-7 text-[var(--muted)]">Cada conexión pertenece únicamente a {company.name}. Hasta que una herramienta esté verificada, ningún empleado afirmará que puede utilizarla.</p></header>
       {query.configured && <p role="status" className="mt-7 rounded-2xl bg-[#fff8e5] p-4 text-sm text-[#5f4b16] dark:bg-[#2c260f] dark:text-[#f4dda0]">Credenciales guardadas de forma cifrada. Comprueba la conexión antes de darla por disponible.</p>}
       <div className="mt-10 grid gap-4 md:grid-cols-2">
         {(providers ?? []).filter((provider) => provider.provider_key !== 'retell').map((provider) => {

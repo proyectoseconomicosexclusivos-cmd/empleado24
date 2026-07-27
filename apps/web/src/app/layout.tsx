@@ -9,15 +9,25 @@ const mono = Geist_Mono({ subsets: ['latin'], variable: '--font-mono' });
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://empleado24.com'),
-  title: 'Empleado24 | Tu nueva Recepcionista puede empezar hoy',
-  description: 'Incorpora a una Recepcionista que aprende cómo funciona tu empresa, atiende a tus clientes y cuida de cada llamada.',
+  title: 'Empleado24 | Contrata empleados con IA desde 97 €/mes',
+  description: 'Contrata una Recepcionista IA o un Especialista Email IA para tu empresa. Trabajan 24 horas al día y pueden empezar en menos de 5 minutos.',
   alternates: { canonical: '/' },
   icons: { icon: '/icon.svg', shortcut: '/icon.svg', apple: '/icon.svg' },
-  openGraph: { title: 'Empleado24 — Hay alguien listo para cuidar de tus clientes', description: 'Una nueva compañera para tu empresa, presente cuando la necesitas.', type: 'website', locale: 'es_ES', url: 'https://empleado24.com', siteName: 'Empleado24' },
-  twitter: { card: 'summary_large_image', title: 'Empleado24', description: 'Tu nueva Recepcionista puede empezar hoy.' },
+  openGraph: { title: 'Empleado24 — Contrata empleados con IA para tu empresa', description: 'Recepcionista IA y Especialista Email IA desde 97 €/mes. Incorporación guiada en menos de 5 minutos.', type: 'website', locale: 'es_ES', url: 'https://empleado24.com', siteName: 'Empleado24' },
+  twitter: { card: 'summary_large_image', title: 'Empleado24 | Empleados con IA', description: 'Contrata tu primer empleado con IA desde 97 €/mes.' },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const schema={'@context':'https://schema.org','@type':'Organization',name:'Empleado24',url:'https://empleado24.com',description:'Una nueva compañera para atender a los clientes de tu empresa'};
+  const schema={
+    '@context':'https://schema.org',
+    '@graph':[
+      {'@type':'Organization',name:'Empleado24',url:'https://empleado24.com',description:'Empleados con IA para empresas'},
+      {'@type':'WebSite',name:'Empleado24',url:'https://empleado24.com',inLanguage:'es'},
+      {'@type':'ItemList',name:'Empleados con IA disponibles',itemListElement:[
+        {'@type':'ListItem',position:1,item:{'@type':'Product',name:'Recepcionista IA',description:'Atiende llamadas y organiza citas para tu empresa',offers:{'@type':'Offer',price:'97',priceCurrency:'EUR',availability:'https://schema.org/InStock',url:'https://empleado24.com/#empleados'}}},
+        {'@type':'ListItem',position:2,item:{'@type':'Product',name:'Especialista Email IA',description:'Organiza contactos, mensajes y campañas de email para tu empresa',offers:{'@type':'Offer',price:'97',priceCurrency:'EUR',availability:'https://schema.org/InStock',url:'https://empleado24.com/#empleados'}}},
+      ]},
+    ],
+  };
   return <html lang="es" suppressHydrationWarning className={`${geist.variable} ${mono.variable}`}><body>{children}<BusinessAnalyticsTracker /><HelpCenter /><script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(schema)}}/></body></html>;
 }
