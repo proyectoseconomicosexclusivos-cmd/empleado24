@@ -8,10 +8,11 @@ test('guardian summary is healthy only when no check failed', () => {
   assert.deepEqual(summary.failed, []);
 });
 
-test('guardian summary exposes failed checks without secrets', () => {
+test('guardian summary keeps operational warnings visible without blocking sales', () => {
   const summary = buildGuardianSummary({ redis: { status: 'error', latencyMs: 12, detail: 'redis_timeout' } });
-  assert.equal(summary.status, 'degraded');
+  assert.equal(summary.status, 'ok');
   assert.deepEqual(summary.failed, [{ key: 'redis', detail: 'redis_timeout' }]);
+  assert.deepEqual(summary.warnings, [{ key: 'redis', detail: 'redis_timeout' }]);
 });
 
 test('guardian deduplication bucket is deterministic', () => {

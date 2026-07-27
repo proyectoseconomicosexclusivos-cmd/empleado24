@@ -1,4 +1,4 @@
-import { Check, CreditCard, FileText, ShieldCheck, Sparkles } from 'lucide-react';
+import { Check, CreditCard, FileText, Headphones, Mail, Megaphone, MessageCircle, ShieldCheck, TrendingUp, Users } from 'lucide-react';
 import { CompanyService } from '@/services/company-service';
 import { createClient } from '@/lib/supabase/server';
 import { BillingActionButton } from '@/components/billing-action-button';
@@ -10,6 +10,27 @@ const stateCopy: Record<string, string> = {
 function money(amount: number, currency: string) {
   return new Intl.NumberFormat('es-ES', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount / 100);
 }
+
+const employeePresentation = {
+  one_employee: {
+    name: 'Recepcionista IA',
+    description: 'Atiende llamadas, resuelve preguntas y organiza citas para tu empresa.',
+    icon: Headphones,
+    benefits: ['Atención todos los días', 'Incorporación guiada', '3 días para probarla'],
+  },
+  employee_email: {
+    name: 'Especialista Email IA',
+    description: 'Organiza contactos, prepara mensajes y trabaja desde la cuenta de envío de tu empresa.',
+    icon: Mail,
+    benefits: ['Cuenta de envío propia', 'Datos separados por empresa', '3 días para probarlo'],
+  },
+} as const;
+
+const upcomingEmployees = [
+  { name: 'Closer IA', description: 'Da seguimiento a tus oportunidades comerciales.', icon: TrendingUp },
+  { name: 'Redes Sociales IA', description: 'Mantiene activa la comunicación con tu comunidad.', icon: Megaphone },
+  { name: 'Atención al Cliente IA', description: 'Resuelve dudas y sabe cuándo pedir ayuda.', icon: MessageCircle },
+];
 
 export default async function BillingPage({ searchParams }: { searchParams: Promise<{ checkout?: string }> }) {
   const membership = await CompanyService.current();
@@ -41,8 +62,18 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       {subscription?.provider_customer_id && <BillingActionButton action="portal" className="mt-6 rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#111315] transition hover:-translate-y-0.5 dark:bg-[#111315] dark:text-white md:mt-0">Gestionar contratación y facturas</BillingActionButton>}
     </section>
 
-    <section className="mt-14"><p className="eyebrow">Empleados disponibles</p><h2 className="mt-2 text-2xl font-semibold tracking-[-.04em]">¿A quién quieres incorporar?</h2><div className="mt-7 grid gap-4 lg:grid-cols-3">
-      {availablePlans.filter((plan) => plan.self_serve_enabled).map((plan) => <article key={plan.id} className={`surface rounded-3xl p-6 ${currentPlan?.id === plan.id ? 'ring-2 ring-[#789500]' : ''}`}><div className="flex items-start justify-between gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#efffcf] text-[#526a00] dark:bg-[#263300] dark:text-[#d7f897]"><Sparkles size={18}/></span>{currentPlan?.id === plan.id && <span className="rounded-full bg-[#e9ffcf] px-3 py-1 text-xs font-medium text-[#486500]">Tu plan</span>}</div><h3 className="mt-8 text-xl font-semibold">{plan.name}</h3><p className="mt-2 min-h-12 text-sm leading-6 text-[var(--muted)]">{plan.description}</p><p className="mt-6 text-4xl font-semibold tracking-[-.06em]">{money(plan.monthly_price_cents, plan.currency)}<span className="ml-1 text-sm font-normal tracking-normal text-[var(--muted)]">/mes</span></p><ul className="mt-6 grid gap-3 text-sm"><li className="flex gap-2"><Check size={16} className="text-[#789500]"/>Hasta {plan.employee_limit} {plan.employee_limit === 1 ? 'empleado digital' : 'empleados digitales'}</li><li className="flex gap-2"><Check size={16} className="text-[#789500]"/>{plan.trial_days} días para probarlo</li><li className="flex gap-2"><Check size={16} className="text-[#789500]"/>Cambios auditados por Stripe</li></ul><div className="mt-7">{hasProviderSubscription ? <BillingActionButton action="portal" className="w-full rounded-full bg-[#111315] px-4 py-3 text-sm font-semibold text-white dark:bg-[#f4f5f0] dark:text-[#111315]">{currentPlan?.id === plan.id ? 'Gestionar este plan' : 'Cambiar desde Stripe'}</BillingActionButton> : <BillingActionButton action="checkout" planKey={plan.plan_key} className="w-full rounded-full bg-[#111315] px-4 py-3 text-sm font-semibold text-white dark:bg-[#f4f5f0] dark:text-[#111315]">Contratar {plan.name}</BillingActionButton>}</div></article>)}
+    <section className="mt-14"><p className="eyebrow">Empleados disponibles</p><h2 className="mt-2 text-2xl font-semibold tracking-[-.04em]">¿A quién quieres incorporar?</h2><div className="mt-7 grid gap-4 lg:grid-cols-2">
+      {availablePlans.filter((plan) => plan.self_serve_enabled && plan.plan_key in employeePresentation).map((plan) => {
+        const presentation = employeePresentation[plan.plan_key as keyof typeof employeePresentation];
+        const EmployeeIcon = presentation.icon;
+        return <article key={plan.id} className={`surface rounded-3xl p-6 md:p-7 ${currentPlan?.id === plan.id ? 'ring-2 ring-[#789500]' : ''}`}><div className="flex items-start justify-between gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#efffcf] text-[#526a00] dark:bg-[#263300] dark:text-[#d7f897]"><EmployeeIcon size={20}/></span>{currentPlan?.id === plan.id ? <span className="rounded-full bg-[#e9ffcf] px-3 py-1 text-xs font-medium text-[#486500]">En tu equipo</span> : <span className="rounded-full bg-black/5 px-3 py-1 text-xs text-[var(--muted)] dark:bg-white/5">Disponible</span>}</div><h3 className="mt-8 text-2xl font-semibold tracking-[-.04em]">{presentation.name}</h3><p className="mt-3 min-h-14 text-sm leading-6 text-[var(--muted)]">{presentation.description}</p><p className="mt-6 text-4xl font-semibold tracking-[-.06em]">{money(plan.monthly_price_cents, plan.currency)}<span className="ml-1 text-sm font-normal tracking-normal text-[var(--muted)]">/mes</span></p><ul className="mt-6 grid gap-3 text-sm">{presentation.benefits.map((benefit) => <li key={benefit} className="flex gap-2"><Check size={16} className="text-[#789500]"/>{benefit}</li>)}</ul><div className="mt-7">{hasProviderSubscription ? <BillingActionButton action="portal" className="w-full rounded-full bg-[#111315] px-4 py-3 text-sm font-semibold text-white dark:bg-[#f4f5f0] dark:text-[#111315]">{currentPlan?.id === plan.id ? 'Gestionar contratación' : `Cambiar a ${presentation.name}`}</BillingActionButton> : <BillingActionButton action="checkout" planKey={plan.plan_key} className="w-full rounded-full bg-[#111315] px-4 py-3 text-sm font-semibold text-white dark:bg-[#f4f5f0] dark:text-[#111315]">Contratar {presentation.name}</BillingActionButton>}</div></article>;
+      })}
+    </div></section>
+
+    <section className="mt-14"><p className="eyebrow">Próximas incorporaciones</p><h2 className="mt-2 text-2xl font-semibold tracking-[-.04em]">Tu equipo seguirá creciendo.</h2><div className="mt-7 grid gap-4 md:grid-cols-3">{upcomingEmployees.map(({ name, description, icon: EmployeeIcon }) => <article key={name} className="rounded-3xl border border-dashed border-[var(--line)] p-6"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-black/5 text-[var(--muted)] dark:bg-white/5"><EmployeeIcon size={18}/></span><h3 className="mt-7 text-lg font-semibold">{name}</h3><p className="mt-2 min-h-12 text-sm leading-6 text-[var(--muted)]">{description}</p><span className="mt-5 inline-block text-xs font-semibold uppercase tracking-[.12em] text-[#789500]">Próximamente</span></article>)}</div></section>
+
+    <section className="mt-14"><p className="eyebrow">Equipos para crecer</p><h2 className="mt-2 text-2xl font-semibold tracking-[-.04em]">Más capacidad para empresas con mayor volumen.</h2><div className="mt-7 grid gap-4 md:grid-cols-2">
+      {availablePlans.filter((plan) => plan.self_serve_enabled && !(plan.plan_key in employeePresentation)).map((plan) => <article key={plan.id} className={`surface rounded-3xl p-6 ${currentPlan?.id === plan.id ? 'ring-2 ring-[#789500]' : ''}`}><div className="flex items-start justify-between gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#efffcf] text-[#526a00] dark:bg-[#263300] dark:text-[#d7f897]"><Users size={18}/></span>{currentPlan?.id === plan.id && <span className="rounded-full bg-[#e9ffcf] px-3 py-1 text-xs font-medium text-[#486500]">Tu equipo</span>}</div><h3 className="mt-7 text-xl font-semibold">{plan.name}</h3><p className="mt-2 min-h-12 text-sm leading-6 text-[var(--muted)]">{plan.description}</p><p className="mt-6 text-3xl font-semibold tracking-[-.05em]">{money(plan.monthly_price_cents, plan.currency)}<span className="ml-1 text-sm font-normal tracking-normal text-[var(--muted)]">/mes</span></p><div className="mt-7">{hasProviderSubscription ? <BillingActionButton action="portal" className="w-full rounded-full border border-[var(--line)] px-4 py-3 text-sm font-semibold">Revisar mi equipo</BillingActionButton> : <BillingActionButton action="checkout" planKey={plan.plan_key} className="w-full rounded-full border border-[var(--line)] px-4 py-3 text-sm font-semibold">Elegir {plan.name}</BillingActionButton>}</div></article>)}
     </div></section>
 
     <section className="mt-14"><div className="flex items-end justify-between gap-4"><div><p className="eyebrow">Documentos reales</p><h2 className="mt-2 text-2xl font-semibold tracking-[-.04em]">Tus facturas.</h2></div><CreditCard className="text-[var(--muted)]"/></div>{availableInvoices.length ? <div className="surface mt-7 overflow-hidden rounded-3xl"><ul className="divide-y divide-[var(--line)]">{availableInvoices.map((invoice) => <li key={invoice.id} className="flex flex-wrap items-center justify-between gap-4 p-5"><div className="flex items-center gap-3"><FileText size={18} className="text-[#789500]"/><div><p className="text-sm font-medium">{money(invoice.amount_paid_cents || invoice.amount_due_cents, invoice.currency)}</p><p className="mt-1 text-xs text-[var(--muted)]">{invoice.status} · {new Date(invoice.created_at).toLocaleDateString('es-ES')}</p></div></div>{invoice.invoice_url && <a href={invoice.invoice_url} target="_blank" rel="noreferrer" className="text-sm font-medium underline underline-offset-4">Ver factura</a>}</li>)}</ul></div> : <div className="mt-7 rounded-3xl border border-dashed border-[var(--line)] p-8"><FileText className="text-[var(--muted)]"/><p className="mt-5 font-medium">Aún no hay facturas confirmadas.</p><p className="mt-2 text-sm text-[var(--muted)]">Aparecerán aquí únicamente cuando el proveedor de pagos las envíe y queden guardadas.</p></div>}</section>

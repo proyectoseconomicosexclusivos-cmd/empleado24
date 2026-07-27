@@ -61,6 +61,7 @@ export async function configureIntegration(formData: FormData) {
       : 'connection';
     redirect(`/app/integraciones/${providerKey}?error=${friendly}`);
   }
+  if (providerKey === 'brevo') redirect('/app/especialista-email?connected=1');
   redirect(providerKey === 'retell' ? '/app/integraciones/retell?connected=1' : `/onboarding?configured=${providerKey}`);
 }
 
