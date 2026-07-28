@@ -6,6 +6,7 @@ import { validGoogleAccessToken } from '@/lib/google-calendar-runtime';
 import { maskPhone } from '@/lib/retell-runtime';
 import { notifyOwner } from '@/lib/owner-notifications';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createOpportunityFromReceptionistCall } from '@/lib/sales-runtime';
 
 type UsageRecordClient = {
   rpc: (
@@ -321,12 +322,19 @@ export async function persistRetellCall(input: {
       }).catch(() => undefined);
     }
   }
-  if (terminal)
-    await createAppointmentFromAnalysis({
+  if (terminal) {
+    await Promise.all([createAppointmentFromAnalysis({
       companyId: input.companyId,
       employeeId: input.employeeId,
       callId: persisted.id,
       analysis: call.analysis ?? {},
-    });
+    }), createOpportunityFromReceptionistCall({
+      companyId: input.companyId,
+      callId: persisted.id,
+      summary: call.summary,
+      analysis: call.analysis ?? {},
+      fromNumber: call.fromNumber,
+    })]);
+  }
   return { id: persisted.id, terminal };
 }
