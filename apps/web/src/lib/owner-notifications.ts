@@ -13,6 +13,24 @@ function commercialNotification(input: OwnerNotification) {
   const message = input.message.replace(/https?:\/\/\S+/g, '').trim();
   const company = input.companyId ? `\nEmpresa: ${input.companyId}` : '';
 
+  if (event === 'sales.lead.created') {
+    return { subject: '📞 Nuevo lead recibido', text: `📞 Nuevo lead recibido${company}\n\n${message}` };
+  }
+  if (event === 'sales.lead.hot') {
+    return { subject: '🔥 Cliente muy interesado', text: `🔥 Cliente muy interesado${company}\n\n${message}` };
+  }
+  if (event === 'sales.meeting.scheduled') {
+    return { subject: '📅 Reunión agendada', text: `📅 Reunión agendada${company}\n\n${message}` };
+  }
+  if (event === 'sales.quote.sent') {
+    return { subject: '📝 Presupuesto enviado', text: `📝 Presupuesto enviado${company}\n\n${message}` };
+  }
+  if (event === 'sales.won') {
+    return { subject: '🎉 Venta conseguida', text: `🎉 Venta conseguida${company}\n\n${message}` };
+  }
+  if (event === 'sales.lost') {
+    return { subject: 'Cliente perdido', text: `Cliente perdido${company}\n\n${message}` };
+  }
   if (event === 'user.registered') {
     return { subject: '🟢 Nuevo cliente registrado', text: `🟢 Nuevo cliente registrado\n\n${message}` };
   }
