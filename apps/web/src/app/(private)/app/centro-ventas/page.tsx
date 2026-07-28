@@ -54,6 +54,7 @@ export default async function SalesCenterPage() {
   const won = sales.filter((item) => item.stage === 'won');
   const hot = sales.filter((item) => item.heat === 'very_hot');
   const meetings = actions.filter((item) => item.activity_type === 'meeting' && item.status === 'planned');
+  const quotes = sales.filter((item) => ['quote_sent', 'negotiation'].includes(item.stage));
   const followups = actions.filter((item) => item.status === 'planned');
   const potentialValue = open.reduce((sum, item) => sum + item.value_cents, 0);
   const wonValue = won.reduce((sum, item) => sum + item.value_cents, 0);
@@ -64,15 +65,23 @@ export default async function SalesCenterPage() {
       <span className="rounded-full bg-[#e9ffcf] px-4 py-2 text-sm font-semibold text-[#486500]">● Operativo</span>
     </header>
 
-    <section className="mt-10 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+    <section className="mt-10 grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
       {([
         ['Oportunidades', open.length, TrendingUp],
         ['Clientes', won.length, Users],
         ['Seguimientos', followups.length, Phone],
         ['Reuniones', meetings.length, CalendarDays],
+        ['Presupuestos', quotes.length, CheckCircle2],
         ['Muy interesados', hot.length, Flame],
         ['Ventas', money(wonValue), CircleDollarSign],
       ] as Array<[string, string | number, LucideIcon]>).map(([label, value, Icon]) => <article key={label} className="surface rounded-3xl p-5"><Icon size={18} className="text-[#789500]"/><p className="mt-6 text-3xl font-semibold tracking-[-.05em]">{String(value)}</p><p className="mt-1 text-xs text-[var(--muted)]">{label}</p></article>)}
+    </section>
+
+    <section className="surface mt-6 rounded-[2rem] p-6">
+      <p className="eyebrow">Embudo</p>
+      <div className="mt-5 grid gap-2 sm:grid-cols-4 lg:grid-cols-7">
+        {Object.entries(stageCopy).map(([stage, label]) => <div key={stage} className="rounded-2xl bg-black/[.035] p-4 dark:bg-white/5"><p className="text-2xl font-semibold">{sales.filter((item) => item.stage === stage).length}</p><p className="mt-1 text-xs text-[var(--muted)]">{label}</p></div>)}
+      </div>
     </section>
 
     <section className="mt-10 grid gap-6 xl:grid-cols-[1fr_1.8fr]">
