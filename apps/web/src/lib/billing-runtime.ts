@@ -153,6 +153,12 @@ async function syncSubscription(admin: Admin, object: Record<string, unknown>, c
     trial_ends_at: stripeTimestamp(object.trial_end), current_period_starts_at: stripeTimestamp(period.start), current_period_ends_at: stripeTimestamp(period.end),
     canceled_at: stripeTimestamp(object.canceled_at),
   });
+  if (
+    (key === 'employee_email' || key === 'employee_closer')
+    && ['trialing', 'active', 'canceling'].includes(state)
+  ) {
+    await activateEmployeeForPlan(admin, current.company_id, key);
+  }
 }
 
 async function syncInvoice(admin: Admin, object: Record<string, unknown>, companyHint?: string | null) {
