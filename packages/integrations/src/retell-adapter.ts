@@ -651,4 +651,28 @@ const appointmentAnalysisFields = [
     description: 'Email del cliente si lo ha proporcionado.',
     required: false,
   },
+  {
+    type: 'boolean',
+    name: 'potential_customer',
+    description: 'Indica si la persona mostró una necesidad real que podría convertirse en venta.',
+    required: false,
+  },
+  {
+    type: 'string',
+    name: 'sales_interest_level',
+    description: 'Nivel de interés comercial: cold, interested, hot o very_hot.',
+    required: false,
+  },
+  {
+    type: 'number',
+    name: 'estimated_value_eur',
+    description: 'Valor aproximado en euros si se habló de un importe.',
+    required: false,
+  },
+  {
+    type: 'string',
+    name: 'next_sales_action',
+    description: 'Siguiente paso comercial acordado con el cliente.',
+    required: false,
+  },
 ];
