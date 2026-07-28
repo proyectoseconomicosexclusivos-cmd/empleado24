@@ -24,10 +24,15 @@ const employeePresentation = {
     icon: Mail,
     benefits: ['Cuenta de envío propia', 'Datos separados por empresa', '3 días para probarlo'],
   },
+  employee_closer: {
+    name: 'Closer IA',
+    description: 'Nunca vuelvas a perder una venta. Sigue oportunidades, prepara contactos y agenda reuniones.',
+    icon: TrendingUp,
+    benefits: ['Seguimiento constante', 'Centro de Ventas incluido', '3 días para probarlo'],
+  },
 } as const;
 
 const upcomingEmployees = [
-  { name: 'Closer IA', description: 'Da seguimiento a tus oportunidades comerciales.', icon: TrendingUp },
   { name: 'Redes Sociales IA', description: 'Mantiene activa la comunicación con tu comunidad.', icon: Megaphone },
   { name: 'Atención al Cliente IA', description: 'Resuelve dudas y sabe cuándo pedir ayuda.', icon: MessageCircle },
 ];
