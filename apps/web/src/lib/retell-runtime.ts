@@ -109,13 +109,16 @@ export async function buildReceptionistInstructions(companyId: string, employeeI
   const admin = createAdminClient();
   const [{ data: company }, { data: employee }, { data: config }, { data: knowledge }] = await Promise.all([
     admin.from('companies').select('name,sector,country,locale,timezone,business_hours').eq('id', companyId).single(),
-    admin.from('employees').select('name,description,primary_locale,secondary_locales,personality,instructions,schedule').eq('id', employeeId).single(),
+    admin.from('employees').select('name,description,employee_type,primary_locale,secondary_locales,personality,instructions,schedule').eq('id', employeeId).single(),
     admin.from('employee_configs').select('*').eq('employee_id', employeeId).maybeSingle(),
     admin.from('knowledge_items').select('title,content,category').eq('company_id', companyId).or(`employee_id.is.null,employee_id.eq.${employeeId}`).eq('status', 'active').order('created_at'),
   ]);
   if (!company || !employee) throw new Error('employee_configuration_missing');
+  const isCloser = employee.employee_type === 'closer';
   const rules = [
-    `Eres ${employee.name}, la Recepcionista digital de ${company.name}.`,
+    isCloser
+      ? `Eres ${employee.name}, el Director Comercial digital de ${company.name}.`
+      : `Eres ${employee.name}, la Recepcionista digital de ${company.name}.`,
     `Habla principalmente en ${employee.primary_locale}. Zona horaria: ${company.timezone}.`,
     employee.description ? `Tu responsabilidad: ${employee.description}` : '',
     config?.greeting ? `Saludo acordado: ${config.greeting}` : '',
@@ -126,7 +129,9 @@ export async function buildReceptionistInstructions(companyId: string, employeeI
     config?.human_handoff_policy ? `Si pide hablar con una persona: ${config.human_handoff_policy}` : '',
     'No inventes precios, horarios, disponibilidad ni políticas. Usa únicamente la base de conocimiento conectada.',
     'Si el cliente confirma una cita, repite fecha, hora, zona horaria, duración y motivo antes de cerrar.',
-    'Indica con naturalidad que eres una recepcionista digital cuando sea relevante o te lo pregunten.',
+    isCloser
+      ? 'Comprende el interés real, acuerda un siguiente paso y registra con claridad si es una oportunidad comercial. No presiones ni inventes condiciones.'
+      : 'Indica con naturalidad que eres una recepcionista digital cuando sea relevante o te lo pregunten.',
   ].filter(Boolean);
   return { instructions: rules.join('\n'), company, employee, knowledge: knowledge ?? [] };
 }
