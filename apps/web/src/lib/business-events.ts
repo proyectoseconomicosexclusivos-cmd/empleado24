@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 
-export type BusinessEventName = 'landing_view' | 'page_view' | 'pricing_view' | 'signup_started' | 'signup_completed' | 'registration_started' | 'email_verified' | 'login' | 'trial_started' | 'trial_finished' | 'employee_hired' | 'phone_connected' | 'calendar_connected' | 'checkout_started' | 'payment_completed' | 'checkout_completed' | 'subscription_active' | 'minutes_purchased' | 'first_login' | 'first_call' | 'call_completed' | 'cancellation_requested' | 'subscription_cancelled' | 'subscription_reactivated' | 'support_chat_opened' | 'critical_error';
+export type BusinessEventName = 'landing_view' | 'page_view' | 'pricing_view' | 'signup_started' | 'signup_completed' | 'registration_started' | 'email_verified' | 'login' | 'trial_started' | 'trial_finished' | 'employee_hired' | 'phone_connected' | 'calendar_connected' | 'checkout_started' | 'payment_completed' | 'checkout_completed' | 'subscription_active' | 'minutes_purchased' | 'first_login' | 'first_call' | 'call_completed' | 'cancellation_requested' | 'subscription_cancelled' | 'subscription_reactivated' | 'support_chat_opened' | 'critical_error' | 'sales_lead_created' | 'sales_lead_hot' | 'sales_meeting_scheduled' | 'sales_quote_sent' | 'sales_won' | 'sales_lost';
 
 export function recordBusinessEvent(input: {
   eventName: BusinessEventName;

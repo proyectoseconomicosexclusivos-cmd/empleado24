@@ -66,9 +66,10 @@ const employees: EmployeeCard[] = [
     role: 'Da seguimiento a oportunidades',
     description: 'Mantiene conversaciones comerciales y ayuda a convertir el interés en una decisión.',
     benefits: ['Seguimiento constante', 'Prioriza oportunidades', 'Acompaña cada venta'],
-    price: 'Próximamente',
+    price: '197 €/mes',
     icon: TrendingUp,
-    available: false,
+    href: '/register',
+    available: true,
   },
   {
     name: 'Redes Sociales IA',
@@ -280,7 +281,7 @@ function TeamPreview() {
         {[
           [Headphones, 'Recepcionista IA', 'Atiende llamadas y citas', 'Disponible'],
           [Mail, 'Especialista Email IA', 'Cuida contactos y campañas', 'Disponible'],
-          [TrendingUp, 'Closer IA', 'Da seguimiento a oportunidades', 'Próximamente'],
+          [TrendingUp, 'Closer IA', 'Da seguimiento a oportunidades', 'Disponible'],
         ].map(([EmployeeIcon, name, role, status]) => {
           const Icon = EmployeeIcon as LucideIcon;
           return <div key={String(name)} className="flex items-center gap-4 rounded-2xl border border-[var(--line)] p-4"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#efffcf] text-[#526a00] dark:bg-[#263300] dark:text-[#d7f897]"><Icon size={18} /></span><div className="min-w-0 flex-1"><p className="font-semibold">{String(name)}</p><p className="mt-1 text-xs text-[var(--muted)]">{String(role)}</p></div><span className={`hidden text-xs sm:block ${status === 'Disponible' ? 'text-[#789500]' : 'text-[var(--muted)]'}`}>{String(status)}</span></div>;

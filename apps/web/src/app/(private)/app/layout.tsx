@@ -1,15 +1,14 @@
 import Link from 'next/link';
-import { Bell, Clock3, CreditCard, Headphones, Home, Mail, PlugZap, Settings, Sparkles } from 'lucide-react';
+import { Bell, Clock3, CreditCard, Headphones, Home, Mail, PlugZap, Settings, Sparkles, TrendingUp } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { AuthService } from '@/services/auth-service';
 import { SignOutButton } from '@/components/sign-out-button';
 import { createClient } from '@/lib/supabase/server';
 
-const navigation = [
+const baseNavigation = [
   { href: '/app', label: 'Mi oficina', icon: Home },
   { href: '/app/recepcionista', label: 'Mi Recepcionista', icon: Headphones },
-  { href: '/app/especialista-email', label: 'Especialista Email', icon: Mail },
   { href: '/app#jornada', label: 'Actividad', icon: Clock3 },
   { href: '/app#avisos', label: 'Avisos', icon: Bell },
   { href: '/app/configuracion', label: 'Su forma de trabajar', icon: Settings },
@@ -24,6 +23,18 @@ export default async function PrivateLayout({ children }: { children: React.Reac
   const { data: membership } = await supabase.from('members').select('company_id').eq('user_id', user.id).limit(1).maybeSingle();
   if (!membership) redirect('/onboarding');
   const { data: settings } = await supabase.from('settings').select('data').eq('company_id', membership.company_id).maybeSingle();
+  const { data: employees } = await supabase
+    .from('employees')
+    .select('employee_type')
+    .eq('company_id', membership.company_id)
+    .in('employee_type', ['email_specialist', 'closer']);
+  const employeeTypes = new Set((employees ?? []).map((employee) => employee.employee_type));
+  const navigation = [
+    ...baseNavigation.slice(0, 2),
+    ...(employeeTypes.has('email_specialist') ? [{ href: '/app/especialista-email', label: 'Especialista Email', icon: Mail }] : []),
+    ...(employeeTypes.has('closer') ? [{ href: '/app/centro-ventas', label: 'Centro de Ventas', icon: TrendingUp }] : []),
+    ...baseNavigation.slice(2),
+  ];
   const settingsData = settings?.data;
   const completed = Boolean(settingsData && typeof settingsData === 'object' && !Array.isArray(settingsData) && settingsData.onboarding_completed === true);
   const pathname = (await headers()).get('x-pathname') ?? '';

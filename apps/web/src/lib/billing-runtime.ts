@@ -21,7 +21,11 @@ export function stripeAdapter(requireWebhook = false) {
 export function billingPlan(plan: PlanRow): BillingPlan {
   return {
     key: plan.plan_key,
-    lookupKey: plan.plan_key === 'employee_email' ? 'employee_email_monthly' : undefined,
+    lookupKey: plan.plan_key === 'employee_email'
+      ? 'employee_email_monthly'
+      : plan.plan_key === 'employee_closer'
+        ? 'employee_closer_monthly'
+        : undefined,
     name: plan.name,
     description: plan.description,
     amountMinor: plan.monthly_price_cents,
@@ -168,12 +172,34 @@ async function syncInvoice(admin: Admin, object: Record<string, unknown>, compan
   if (subscriptionId && !subscription.provider_subscription_id) await admin.from('subscriptions').update({ provider_subscription_id: subscriptionId }).eq('id', subscription.id);
 }
 
-async function activateEmailSpecialist(admin: Admin, companyId: string) {
+const employeeByPlan = {
+  employee_email: {
+    employeeType: 'email_specialist',
+    name: 'Especialista Email IA',
+    description: 'Organiza contactos, prepara campañas y mantiene el seguimiento por email.',
+    providerKey: 'brevo',
+    connectedTools: ['email'],
+  },
+  employee_closer: {
+    employeeType: 'closer',
+    name: 'Closer IA',
+    description: 'Hace seguimiento de oportunidades, prepara contactos y convierte interés en ventas.',
+    providerKey: 'retell',
+    connectedTools: ['voice', 'email', 'calendar'],
+  },
+} as const;
+
+async function activateEmployeeForPlan(
+  admin: Admin,
+  companyId: string,
+  planKey: keyof typeof employeeByPlan,
+) {
+  const profile = employeeByPlan[planKey];
   const existing = await admin
     .from('employees')
     .select('id')
     .eq('company_id', companyId)
-    .eq('employee_type', 'email_specialist')
+    .eq('employee_type', profile.employeeType)
     .maybeSingle();
   if (existing.error) throw existing.error;
   if (existing.data) return existing.data.id;
@@ -182,14 +208,14 @@ async function activateEmailSpecialist(admin: Admin, companyId: string) {
     .from('employees')
     .insert({
       company_id: companyId,
-      employee_type: 'email_specialist',
-      name: 'Especialista Email IA',
-      description: 'Organiza contactos, prepara campañas y mantiene el seguimiento por email.',
+      employee_type: profile.employeeType,
+      name: profile.name,
+      description: profile.description,
       status: 'active',
       runtime_status: 'active',
-      provider_key: 'brevo',
-      connected_tools: ['email'],
-      instructions: { role: 'email_specialist' },
+      provider_key: profile.providerKey,
+      connected_tools: [...profile.connectedTools],
+      instructions: { role: profile.employeeType },
     })
     .select('id')
     .single();
@@ -197,7 +223,7 @@ async function activateEmailSpecialist(admin: Admin, companyId: string) {
   await recordBusinessEvent({
     eventName: 'employee_hired',
     companyId,
-    metadata: { employee_type: 'email_specialist', employee_id: created.data.id },
+    metadata: { employee_type: profile.employeeType, employee_id: created.data.id },
   }).catch(() => undefined);
   return created.data.id;
 }
@@ -250,7 +276,9 @@ export async function processStripeEvent(event: StripeEvent) {
       const key = stringValue(metadata(object).plan_key);
       const result = await admin.from('subscriptions').update({ provider_customer_id: stringValue(object.customer), provider_subscription_id: providerSubscriptionId, plan_id: await planId(admin, key), plan_key: key, provider: 'stripe', updated_at: new Date().toISOString() }).eq('id', current.id);
       if (result.error) throw result.error;
-      if (key === 'employee_email') await activateEmailSpecialist(admin, resolvedCompanyId);
+      if (key === 'employee_email' || key === 'employee_closer') {
+        await activateEmployeeForPlan(admin, resolvedCompanyId, key);
+      }
     }
   } else if (event.type.startsWith('customer.subscription.')) {
     await syncSubscription(admin, object, companyHint);
