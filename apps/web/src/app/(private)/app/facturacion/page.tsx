@@ -30,6 +30,12 @@ const employeePresentation = {
     icon: TrendingUp,
     benefits: ['Seguimiento constante', 'Centro de Ventas incluido', '3 días para probarlo'],
   },
+  employee_whatsapp: {
+    name: 'WhatsApp IA',
+    description: 'Atiende mensajes, responde dudas y convierte conversaciones en oportunidades para tu empresa.',
+    icon: MessageCircle,
+    benefits: ['Atención 24 horas', 'Oportunidades y citas', '3 días para probarlo'],
+  },
 } as const;
 
 const upcomingEmployees = [

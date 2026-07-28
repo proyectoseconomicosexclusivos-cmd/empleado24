@@ -12,6 +12,7 @@ const credentialFields: Record<string, Array<[string, string]>> = {
   brevo: [['api_key', 'Clave de conexión de Brevo']],
   twilio: [['account_sid', 'Account SID'], ['auth_token', 'Auth Token']],
   telnyx: [['api_key', 'Clave de conexión de Telnyx']],
+  whatsapp_meta: [['access_token', 'Clave de WhatsApp Business'], ['waba_id', 'ID de tu cuenta de WhatsApp Business'], ['phone_number_id', 'ID de tu número de WhatsApp'], ['graph_api_version', 'Versión de conexión']],
 };
 
 const errorCopy: Record<string, string> = {
@@ -63,7 +64,7 @@ export default async function IntegrationDetail({
       <header className="mt-10">
         <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#efffcf] text-[#526a00] dark:bg-[#263300] dark:text-[#d7f897]"><KeyRound size={20} /></span>
         <p className="eyebrow mt-8">Conexión privada</p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-[-.06em]">{providerKey === 'retell' ? 'Preparar la voz de tu Recepcionista' : providerKey === 'zadarma' ? 'Conecta tu teléfono' : providerKey === 'brevo' ? 'Conecta la cuenta de envío de tu empresa' : `Conectar ${provider.name}`}</h1>
+        <h1 className="mt-3 text-4xl font-semibold tracking-[-.06em]">{providerKey === 'retell' ? 'Preparar la voz de tu Recepcionista' : providerKey === 'zadarma' ? 'Conecta tu teléfono' : providerKey === 'brevo' ? 'Conecta la cuenta de envío de tu empresa' : providerKey === 'whatsapp_meta' ? 'Conecta tu WhatsApp Business' : `Conectar ${provider.name}`}</h1>
         <p className="mt-4 leading-7 text-[var(--muted)]">Las claves quedan cifradas dentro de tu empresa. Nunca se muestran de nuevo ni se comparten con otros clientes.</p>
       </header>
 
@@ -71,6 +72,7 @@ export default async function IntegrationDetail({
       {query.connected === '1' && <p role="status" className="mt-7 rounded-2xl bg-[#efffcf] p-4 text-sm text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]">Conexión verificada. Ahora elige cómo quieres que hable.</p>}
       {providerKey === 'zadarma' && <section className="mt-7 rounded-3xl border border-[var(--line)] bg-black/[.025] p-6 text-sm dark:bg-white/[.035]"><p className="font-medium">Conecta tu teléfono</p><p className="mt-2 leading-6 text-[var(--muted)]">Puedes usar un número nuevo o conservar el fijo o móvil que ya conocen tus clientes. Compra el número o activa un desvío y después conecta las claves.</p><div className="mt-5 grid gap-3 sm:grid-cols-2"><a className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4 font-medium hover:border-[#789500]" href="https://zadarma.com/es/order/numbers/" target="_blank" rel="noreferrer"><span className="block text-[#526a00]">1 · Comprar un número</span><span className="mt-1 block text-xs font-normal text-[var(--muted)]">Elige un número que pueda recibir llamadas.</span></a><a className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4 font-medium hover:border-[#789500]" href="https://my.zadarma.com/api/" target="_blank" rel="noreferrer"><span className="block text-[#526a00]">2 · Crear claves de conexión</span><span className="mt-1 block text-xs font-normal text-[var(--muted)]">Copia las dos claves que te muestra tu cuenta.</span></a></div><div className="mt-5 rounded-2xl bg-[var(--card)] p-4 text-xs leading-5 text-[var(--muted)]"><p className="font-medium text-[var(--fg)]">Ejemplo de lo que debes pegar</p><p className="mt-1">Clave 1: <code>abc123…</code> · Clave 2: <code>••••••••</code> · Número: <code>+349XXXXXXXX</code></p></div></section>}
       {providerKey === 'brevo' && <section className="mt-7 rounded-3xl border border-[var(--line)] bg-black/[.025] p-6 text-sm dark:bg-white/[.035]"><p className="font-medium">Una única clave y nada más.</p><p className="mt-2 leading-6 text-[var(--muted)]">Abre tu cuenta de Brevo, crea una clave y pégala abajo. Tu Especialista Email utilizará exclusivamente esa cuenta para los envíos de {company?.name ?? 'tu empresa'}.</p><a className="mt-5 inline-flex rounded-full border border-[var(--line)] bg-[var(--card)] px-4 py-2 font-medium hover:border-[#789500]" href="https://app.brevo.com/settings/keys/api" target="_blank" rel="noreferrer">Abrir mi cuenta de Brevo</a></section>}
+      {providerKey === 'whatsapp_meta' && <section className="mt-7 rounded-3xl border border-[var(--line)] bg-black/[.025] p-6 text-sm dark:bg-white/[.035]"><p className="font-medium">Conecta el WhatsApp de tu empresa.</p><p className="mt-2 leading-6 text-[var(--muted)]">Tu Empleado WhatsApp IA atenderá únicamente los mensajes de este número. La conexión pertenece solo a {company?.name ?? 'tu empresa'}.</p><a className="mt-5 inline-flex rounded-full border border-[var(--line)] bg-[var(--card)] px-4 py-2 font-medium hover:border-[#789500]" href="https://developers.facebook.com/docs/whatsapp/cloud-api/get-started" target="_blank" rel="noreferrer">Abrir configuración de WhatsApp Business</a></section>}
 
       {oauthOnly ? (
         <section className="mt-9 rounded-3xl border border-dashed border-[var(--line)] p-7">
@@ -99,12 +101,12 @@ async function discoverRetellResources(integrationId: string) {
 }
 
 function CredentialForm({ providerKey, providerName, fields }: { providerKey: string; providerName: string; fields: Array<[string, string]> }) {
-  const exampleFor = (name: string) => name === 'api_key' ? 'Ejemplo: abc123…' : name === 'api_secret' ? 'Ejemplo: ••••••••' : name === 'phone_number' ? 'Ejemplo: +349XXXXXXXX' : undefined;
+  const exampleFor = (name: string) => name === 'api_key' ? 'Ejemplo: abc123…' : name === 'api_secret' ? 'Ejemplo: ••••••••' : name === 'phone_number' ? 'Ejemplo: +349XXXXXXXX' : name === 'graph_api_version' ? 'v21.0' : undefined;
   return (
     <form action={configureIntegration} className="surface mt-9 rounded-3xl p-7">
       <input type="hidden" name="provider_key" value={providerKey} />
       <input type="hidden" name="display_name" value={providerName} />
-      {fields.map(([name, label]) => <label key={name} className="mt-5 grid gap-2 text-sm font-medium first:mt-0">{label}<input className="input" type={name === 'phone_number' ? 'tel' : 'password'} name={name} required autoComplete="off" inputMode={name === 'phone_number' ? 'tel' : undefined} placeholder={exampleFor(name)} /><span className="text-xs font-normal text-[var(--muted)]">{name === 'phone_number' ? 'Debe incluir el prefijo internacional.' : 'Se guarda cifrado y nunca volverá a mostrarse.'}</span></label>)}
+      {fields.map(([name, label]) => <label key={name} className="mt-5 grid gap-2 text-sm font-medium first:mt-0">{label}<input className="input" type={name === 'phone_number' ? 'tel' : ['waba_id','phone_number_id','graph_api_version'].includes(name) ? 'text' : 'password'} name={name} required autoComplete="off" inputMode={name === 'phone_number' ? 'tel' : undefined} defaultValue={name === 'graph_api_version' ? 'v21.0' : undefined} placeholder={exampleFor(name)} /><span className="text-xs font-normal text-[var(--muted)]">{['waba_id','phone_number_id','graph_api_version'].includes(name) ? 'Este dato identifica tu conexión y no se comparte con otras empresas.' : name === 'phone_number' ? 'Debe incluir el prefijo internacional.' : 'Se guarda cifrado y nunca volverá a mostrarse.'}</span></label>)}
       <div className="mt-6 flex gap-3 rounded-2xl bg-black/[.025] p-4 text-sm text-[var(--muted)] dark:bg-white/[.035]">
         <ShieldCheck className="shrink-0 text-[#789500]" size={19} />
         <p>Empleado24 comprobará la conexión al guardarla. La clave quedará protegida y no volverá a mostrarse.</p>

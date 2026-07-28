@@ -31,6 +31,12 @@ function commercialNotification(input: OwnerNotification) {
   if (event === 'sales.lost') {
     return { subject: 'Cliente perdido', text: `Cliente perdido${company}\n\n${message}` };
   }
+  if (event === 'whatsapp.message.received') return { subject: '💬 Nuevo WhatsApp recibido', text: `💬 Nuevo WhatsApp recibido${company}\n\n${message}` };
+  if (event === 'whatsapp.quote.requested') return { subject: '💬 Cliente solicita presupuesto', text: `💬 Cliente solicita presupuesto${company}\n\n${message}` };
+  if (event === 'whatsapp.call.requested') return { subject: '💬 Cliente quiere llamada', text: `💬 Cliente quiere llamada${company}\n\n${message}` };
+  if (event === 'whatsapp.meeting.scheduled') return { subject: '💬 Cliente agenda reunión', text: `💬 Cliente agenda reunión${company}\n\n${message}` };
+  if (event === 'whatsapp.converted') return { subject: '💬 Cliente convertido desde WhatsApp', text: `💬 Cliente convertido desde WhatsApp${company}\n\n${message}` };
+  if (event === 'whatsapp.escalated') return { subject: '💬 Conversación escalada', text: `💬 Conversación escalada${company}\n\n${message}` };
   if (event === 'user.registered') {
     return { subject: '🟢 Nuevo cliente registrado', text: `🟢 Nuevo cliente registrado\n\n${message}` };
   }

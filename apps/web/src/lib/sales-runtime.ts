@@ -92,3 +92,27 @@ export async function createOpportunityFromReceptionistCall(input: {
   ]);
   return opportunity.id as string;
 }
+
+/** Shared commercial handoff used by employees; it never crosses company boundaries. */
+export async function createOpportunityFromWhatsApp(input: {
+  companyId: string;
+  conversationId: string;
+  name?: string;
+  phone: string;
+  notes?: string;
+  hot: boolean;
+}) {
+  const admin = createAdminClient() as any;
+  const { data: closer } = await admin.from('employees').select('id').eq('company_id', input.companyId).eq('employee_type', 'closer').eq('status', 'active').maybeSingle();
+  if (!closer) return null;
+  const { data, error } = await admin.from('sales_opportunities').insert({
+    company_id: input.companyId, closer_employee_id: closer.id, source: 'whatsapp',
+    name: input.name || 'Nuevo contacto de WhatsApp', phone: input.phone,
+    stage: input.hot ? 'interested' : 'new', notes: input.notes ?? null,
+    metadata: { whatsapp_conversation_id: input.conversationId },
+  }).select('id').single();
+  if (error?.code === '23505') return null;
+  if (error) throw error;
+  await admin.from('sales_activities').insert({ company_id: input.companyId, opportunity_id: data.id, employee_id: closer.id, activity_type: 'message', status: 'completed', title: 'Lead recibido por WhatsApp IA', completed_at: new Date().toISOString(), outcome: input.notes ?? null, metadata: { whatsapp_conversation_id: input.conversationId } });
+  return data.id as string;
+}

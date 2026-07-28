@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Bell, Clock3, CreditCard, Headphones, Home, Mail, PlugZap, Settings, Sparkles, TrendingUp } from 'lucide-react';
+import { Bell, Clock3, CreditCard, Headphones, Home, Mail, MessageCircle, PlugZap, Settings, Sparkles, TrendingUp } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { AuthService } from '@/services/auth-service';
@@ -27,12 +27,13 @@ export default async function PrivateLayout({ children }: { children: React.Reac
     .from('employees')
     .select('employee_type')
     .eq('company_id', membership.company_id)
-    .in('employee_type', ['email_specialist', 'closer']);
+    .in('employee_type', ['email_specialist', 'closer', 'whatsapp']);
   const employeeTypes = new Set((employees ?? []).map((employee) => employee.employee_type));
   const navigation = [
     ...baseNavigation.slice(0, 2),
     ...(employeeTypes.has('email_specialist') ? [{ href: '/app/especialista-email', label: 'Especialista Email', icon: Mail }] : []),
     ...(employeeTypes.has('closer') ? [{ href: '/app/centro-ventas', label: 'Centro de Ventas', icon: TrendingUp }] : []),
+    ...(employeeTypes.has('whatsapp') ? [{ href: '/app/whatsapp', label: 'WhatsApp IA', icon: MessageCircle }] : []),
     ...baseNavigation.slice(2),
   ];
   const settingsData = settings?.data;

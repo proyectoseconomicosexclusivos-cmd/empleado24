@@ -25,6 +25,8 @@ export function billingPlan(plan: PlanRow): BillingPlan {
       ? 'employee_email_monthly'
       : plan.plan_key === 'employee_closer'
         ? 'employee_closer_monthly'
+        : plan.plan_key === 'employee_whatsapp'
+          ? 'employee_whatsapp_monthly'
         : undefined,
     name: plan.name,
     description: plan.description,
@@ -154,7 +156,7 @@ async function syncSubscription(admin: Admin, object: Record<string, unknown>, c
     canceled_at: stripeTimestamp(object.canceled_at),
   });
   if (
-    (key === 'employee_email' || key === 'employee_closer')
+    (key === 'employee_email' || key === 'employee_closer' || key === 'employee_whatsapp')
     && ['trialing', 'active', 'canceling'].includes(state)
   ) {
     await activateEmployeeForPlan(admin, current.company_id, key);
@@ -192,6 +194,13 @@ const employeeByPlan = {
     description: 'Hace seguimiento de oportunidades, prepara contactos y convierte interés en ventas.',
     providerKey: 'retell',
     connectedTools: ['voice', 'email', 'calendar'],
+  },
+  employee_whatsapp: {
+    employeeType: 'whatsapp',
+    name: 'WhatsApp IA',
+    description: 'Atiende mensajes, resuelve dudas y abre oportunidades para tu empresa.',
+    providerKey: 'whatsapp_meta',
+    connectedTools: ['messaging', 'voice', 'email', 'calendar'],
   },
 } as const;
 
@@ -282,7 +291,7 @@ export async function processStripeEvent(event: StripeEvent) {
       const key = stringValue(metadata(object).plan_key);
       const result = await admin.from('subscriptions').update({ provider_customer_id: stringValue(object.customer), provider_subscription_id: providerSubscriptionId, plan_id: await planId(admin, key), plan_key: key, provider: 'stripe', updated_at: new Date().toISOString() }).eq('id', current.id);
       if (result.error) throw result.error;
-      if (key === 'employee_email' || key === 'employee_closer') {
+      if (key === 'employee_email' || key === 'employee_closer' || key === 'employee_whatsapp') {
         await activateEmployeeForPlan(admin, resolvedCompanyId, key);
       }
     }

@@ -16,6 +16,7 @@ const apiKeyProviders: Record<string, string[]> = {
   brevo: ['api_key'],
   twilio: ['account_sid', 'auth_token'],
   telnyx: ['api_key'],
+  whatsapp_meta: ['access_token'],
 };
 
 async function protectIntegrationAction(action: string, userId: string, companyId: string) {
@@ -41,8 +42,13 @@ export async function configureIntegration(formData: FormData) {
   await protectIntegrationAction('integration.configure', userId, company.id);
   const credentials = Object.fromEntries(fields.filter((field) => field !== 'phone_number').map((field) => [field, String(formData.get(field) ?? '').trim()]));
   if (Object.values(credentials).some((value) => value.length < 4)) redirect(`/app/integraciones/${providerKey}?error=invalid`);
-  const publicConfig = providerKey === 'zadarma' ? { from_number: String(formData.get('phone_number') ?? '').trim() } : {};
+  const publicConfig = providerKey === 'zadarma'
+    ? { from_number: String(formData.get('phone_number') ?? '').trim() }
+    : providerKey === 'whatsapp_meta'
+      ? { waba_id: String(formData.get('waba_id') ?? '').trim(), phone_number_id: String(formData.get('phone_number_id') ?? '').trim(), graph_api_version: String(formData.get('graph_api_version') ?? 'v21.0').trim() }
+      : {};
   if (providerKey === 'zadarma' && !/^\+[1-9]\d{7,14}$/.test(String(publicConfig.from_number))) redirect(`/app/integraciones/${providerKey}?error=invalid`);
+  if (providerKey === 'whatsapp_meta' && (!/^\d+$/.test(String(publicConfig.waba_id)) || !/^\d+$/.test(String(publicConfig.phone_number_id)) || !/^v\d+\.\d+$/.test(String(publicConfig.graph_api_version)))) redirect(`/app/integraciones/${providerKey}?error=invalid`);
   const { data: integrationId, error } = await IntegrationService.configure({ companyId: company.id, providerKey, displayName: String(formData.get('display_name') ?? providerKey).slice(0, 80), authMethod: 'api_key', credentials, publicConfig, makePrimary: true });
   if (error || !integrationId) redirect(`/app/integraciones/${providerKey}?error=save`);
 
@@ -62,6 +68,7 @@ export async function configureIntegration(formData: FormData) {
     redirect(`/app/integraciones/${providerKey}?error=${friendly}`);
   }
   if (providerKey === 'brevo') redirect('/app/especialista-email?connected=1');
+  if (providerKey === 'whatsapp_meta') redirect('/app/whatsapp?connected=1');
   redirect(providerKey === 'retell' ? '/app/integraciones/retell?connected=1' : `/onboarding?configured=${providerKey}`);
 }
 
