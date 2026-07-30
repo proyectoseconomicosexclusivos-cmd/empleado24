@@ -36,7 +36,24 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:${{ github.sha }}
             ghcr.io/${{ github.repository }}:latest
-      - uses: appleboy/ssh-action@v1.2.0
+      - name: Authorize managed deployment key
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: 2.28.17.124
+          username: root
+          password: ${{ secrets.HETZNER_ROOT_PASSWORD }}
+          script: |
+            set -eu
+            id deploy >/dev/null 2>&1 || useradd --create-home --shell /bin/bash deploy
+            install -d -m 700 -o deploy -g deploy /home/deploy/.ssh
+            touch /home/deploy/.ssh/authorized_keys
+            grep -qxF 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICChERDAMmWaDn9o032aiNwDoTrW/ZqJP2Ckvwvsl5yn github-actions-empleado24' /home/deploy/.ssh/authorized_keys || echo 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICChERDAMmWaDn9o032aiNwDoTrW/ZqJP2Ckvwvsl5yn github-actions-empleado24' >> /home/deploy/.ssh/authorized_keys
+            chown deploy:deploy /home/deploy/.ssh/authorized_keys
+            chmod 600 /home/deploy/.ssh/authorized_keys
+            usermod -aG docker deploy
+            chown -R deploy:deploy /opt/empleado24
+      - name: Deploy production release
+        uses: appleboy/ssh-action@v1.2.0
         with:
           host: 2.28.17.124
           username: deploy
