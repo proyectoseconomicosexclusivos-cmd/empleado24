@@ -1,0 +1,25 @@
+http:
+  routers:
+    empleado24:
+      rule: "Host(`empleado24.com`) || Host(`www.empleado24.com`)"
+      entryPoints:
+        - websecure
+      service: empleado24
+      middlewares:
+        - empleado24-security
+      tls:
+        certResolver: letsencrypt
+
+  services:
+    empleado24:
+      loadBalancer:
+        servers:
+          - url: "http://app:3000"
+
+  middlewares:
+    empleado24-security:
+      headers:
+        stsSeconds: 63072000
+        stsIncludeSubdomains: true
+        contentTypeNosniff: true
+        frameDeny: true
