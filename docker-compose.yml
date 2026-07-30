@@ -1,0 +1,158 @@
+name: empleado24
+
+services:
+  app:
+    image: ${APP_IMAGE:-ghcr.io/proyectoseconomicosexclusivos-cmd/empleado24:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+    env_file:
+      - .env.production
+    environment:
+      REDIS_URL: redis://default:${REDIS_PASSWORD}@redis:6379
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent --show-error http://127.0.0.1:3000/api/health >/dev/null"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.empleado24.rule=Host(`empleado24.com`) || Host(`www.empleado24.com`) || Host(`cerradores.com`) || Host(`www.cerradores.com`)
+      - traefik.http.routers.empleado24.entrypoints=websecure
+      - traefik.http.routers.empleado24.tls=true
+      - traefik.http.routers.empleado24.tls.certresolver=letsencrypt
+      - traefik.http.services.empleado24.loadbalancer.server.port=3000
+      - traefik.http.middlewares.empleado24-security.headers.stsSeconds=63072000
+      - traefik.http.middlewares.empleado24-security.headers.stsIncludeSubdomains=true
+      - traefik.http.middlewares.empleado24-security.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.empleado24-security.headers.frameDeny=true
+      - traefik.http.routers.empleado24.middlewares=empleado24-security@docker
+    networks: [edge, internal]
+
+  redis:
+    image: redis:7.4-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--requirepass", "${REDIS_PASSWORD}"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a $$REDIS_PASSWORD ping | grep -q PONG"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - redis-data:/data
+    networks: [internal]
+
+  cron:
+    image: ${APP_IMAGE:-ghcr.io/proyectoseconomicosexclusivos-cmd/empleado24:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+    env_file: [.env.production]
+    environment:
+      CRON_TARGET_URL: http://app:3000
+      REDIS_URL: redis://default:${REDIS_PASSWORD}@redis:6379
+    command: ["/bin/sh", "scripts/vps/cron-runner.sh"]
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    depends_on:
+      app:
+        condition: service_healthy
+    networks: [internal]
+
+  backup:
+    image: ${APP_IMAGE:-ghcr.io/proyectoseconomicosexclusivos-cmd/empleado24:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+    env_file: [.env.production]
+    command: ["/bin/sh", "scripts/vps/backup-runner.sh"]
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    volumes:
+      - backups:/var/lib/empleado24/backups
+    networks: [internal]
+
+  traefik:
+    image: traefik:v3.5.6
+    command:
+      # Use a file provider rather than Docker discovery. Docker 29 rejects
+      # Traefik's legacy provider API negotiation; this keeps routing stable.
+      - --providers.file.filename=/etc/traefik/dynamic.yml
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --certificatesresolvers.letsencrypt.acme.email=${LETSENCRYPT_EMAIL}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+      - --accesslog=true
+      - --log.level=INFO
+      - --api.dashboard=false
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./infra/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - letsencrypt:/letsencrypt
+    networks: [edge]
+
+  portainer:
+    image: portainer/portainer-ce:2.27.9-alpine
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - portainer-data:/data
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.portainer.rule=Host(`portainer.empleado24.com`)
+      - traefik.http.routers.portainer.entrypoints=websecure
+      - traefik.http.routers.portainer.tls=true
+      - traefik.http.routers.portainer.tls.certresolver=letsencrypt
+      - traefik.http.services.portainer.loadbalancer.server.port=9000
+    networks: [edge]
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:1.23.16
+    restart: unless-stopped
+    volumes:
+      - uptime-kuma-data:/app/data
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.status.rule=Host(`status.empleado24.com`)
+      - traefik.http.routers.status.entrypoints=websecure
+      - traefik.http.routers.status.tls=true
+      - traefik.http.routers.status.tls.certresolver=letsencrypt
+      - traefik.http.services.status.loadbalancer.server.port=3001
+    networks: [edge]
+
+networks:
+  edge:
+  internal:
+    internal: true
+
+volumes:
+  redis-data:
+  backups:
+  letsencrypt:
+  portainer-data:
+  uptime-kuma-data:
