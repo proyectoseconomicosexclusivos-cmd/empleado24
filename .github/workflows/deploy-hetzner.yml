@@ -1,4 +1,5 @@
 name: Deploy Hetzner production
+# Every main release is built once and promoted to the managed VPS.
 
 on:
   push:
