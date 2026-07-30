@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { notifyOwner } from '@/lib/owner-notifications';
 import { recordBusinessEvent, type BusinessEventName } from '@/lib/business-events';
+import { getCustomer, publishEvent, saveMemory } from '@/lib/empleado24-brain';
 
 const stages = new Set(['new', 'contacted', 'interested', 'quote_sent', 'negotiation', 'won', 'lost']);
 const activityTypes = new Set(['task', 'call', 'email', 'meeting', 'quote', 'note']);
@@ -77,6 +78,14 @@ export async function createOpportunity(formData: FormData) {
     created_by: context.user.id,
   }).select('id').single();
   if (error) throw error;
+  const customer = await getCustomer({
+    companyId: context.companyId, name, companyName: text(formData, 'company_name'),
+    email: text(formData, 'email'), phone: text(formData, 'phone'), source: 'closer',
+  });
+  await Promise.all([
+    saveMemory({ companyId: context.companyId, customerId: customer.id, employeeId: context.closerId, type: 'commercial', content: `Nuevo lead: ${name}.`, metadata: { opportunity_id: data.id } }),
+    publishEvent({ companyId: context.companyId, customerId: customer.id, employeeId: context.closerId, name: 'LeadCreated', source: 'closer', idempotencyKey: `brain:lead:${data.id}`, payload: { opportunity_id: data.id } }),
+  ]);
   await businessNotification({
     eventName: 'sales_lead_created',
     event: 'sales.lead.created',
@@ -94,7 +103,7 @@ export async function updateOpportunityStage(formData: FormData) {
   if (!stages.has(stage)) throw new Error('El estado elegido no es válido.');
   const { data: previous } = await context.supabase
     .from('sales_opportunities')
-    .select('name,stage')
+    .select('name,stage,email,phone,company_name')
     .eq('company_id', context.companyId)
     .eq('id', opportunityId)
     .single();
@@ -123,6 +132,21 @@ export async function updateOpportunityStage(formData: FormData) {
   } as const;
   const notification = eventByStage[stage as keyof typeof eventByStage];
   if (notification) {
+    const customer = await getCustomer({
+      companyId: context.companyId, name: previous?.name, companyName: previous?.company_name,
+      email: previous?.email, phone: previous?.phone, source: 'closer',
+    });
+    const brainEvent = stage === 'quote_sent'
+      ? 'BudgetSent'
+      : stage === 'won'
+        ? 'SaleWon'
+        : stage === 'lost'
+          ? 'SaleLost'
+          : 'LeadCreated';
+    await Promise.all([
+      saveMemory({ companyId: context.companyId, customerId: customer.id, employeeId: context.closerId, type: 'commercial', content: `${notification[2]}`, metadata: { opportunity_id: opportunityId, stage } }),
+      publishEvent({ companyId: context.companyId, customerId: customer.id, employeeId: context.closerId, name: brainEvent, source: 'closer', idempotencyKey: `brain:sales:${opportunityId}:${stage}`, payload: { opportunity_id: opportunityId, stage } }),
+    ]);
     await businessNotification({
       eventName: notification[0],
       event: notification[1],
@@ -160,6 +184,9 @@ export async function createSalesActivity(formData: FormData) {
     last_contact_at: scheduledAt ? undefined : new Date().toISOString(),
   }).eq('company_id', context.companyId).eq('id', opportunityId);
   if (activityType === 'meeting') {
+    const { data: opportunity } = await context.supabase.from('sales_opportunities').select('name,email,phone,company_name').eq('company_id', context.companyId).eq('id', opportunityId).single();
+    const customer = await getCustomer({ companyId: context.companyId, name: opportunity?.name, companyName: opportunity?.company_name, email: opportunity?.email, phone: opportunity?.phone, source: 'closer' });
+    await publishEvent({ companyId: context.companyId, customerId: customer.id, employeeId: context.closerId, name: 'MeetingBooked', source: 'closer', idempotencyKey: `brain:activity:${opportunityId}:meeting:${title}`, payload: { opportunity_id: opportunityId, title, scheduled_at: scheduledAt } });
     await businessNotification({
       eventName: 'sales_meeting_scheduled',
       event: 'sales.meeting.scheduled',
@@ -168,6 +195,9 @@ export async function createSalesActivity(formData: FormData) {
       opportunityId,
     });
   } else if (activityType === 'quote') {
+    const { data: opportunity } = await context.supabase.from('sales_opportunities').select('name,email,phone,company_name').eq('company_id', context.companyId).eq('id', opportunityId).single();
+    const customer = await getCustomer({ companyId: context.companyId, name: opportunity?.name, companyName: opportunity?.company_name, email: opportunity?.email, phone: opportunity?.phone, source: 'closer' });
+    await publishEvent({ companyId: context.companyId, customerId: customer.id, employeeId: context.closerId, name: 'BudgetCreated', source: 'closer', idempotencyKey: `brain:activity:${opportunityId}:quote:${title}`, payload: { opportunity_id: opportunityId, title } });
     await businessNotification({
       eventName: 'sales_quote_sent',
       event: 'sales.quote.sent',
