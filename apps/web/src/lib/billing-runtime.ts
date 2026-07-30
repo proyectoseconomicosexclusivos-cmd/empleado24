@@ -8,6 +8,7 @@ import { recordBusinessEvent } from '@/lib/business-events';
 import { createClient } from '@/lib/supabase/server';
 import { stripeEnv } from '@/lib/env';
 import { notifyOwner } from '@/lib/owner-notifications';
+import { publishEvent, type BrainEventName } from '@/lib/empleado24-brain';
 
 type Admin = SupabaseClient<Database>;
 type PlanRow = Database['public']['Tables']['billing_plans']['Row'];
@@ -240,7 +241,23 @@ async function activateEmployeeForPlan(
     companyId,
     metadata: { employee_type: profile.employeeType, employee_id: created.data.id },
   }).catch(() => undefined);
+  await publishEvent({
+    companyId,
+    employeeId: created.data.id,
+    name: 'EmployeeActivated',
+    source: 'billing',
+    idempotencyKey: `brain:employee-activated:${created.data.id}`,
+    payload: { employee_type: profile.employeeType, plan_key: planKey },
+  });
   return created.data.id;
+}
+
+function brainEventForStripeEvent(event: StripeEvent, purchaseType: string | null): BrainEventName | null {
+  if (purchaseType === 'prepaid_minutes') return 'MinutesPurchased';
+  if (event.type === 'checkout.session.completed' || event.type === 'invoice.paid' || event.type === 'invoice.payment_succeeded') return 'PaymentCompleted';
+  if (event.type === 'customer.subscription.created') return 'SubscriptionStarted';
+  if (event.type === 'customer.subscription.deleted') return 'SubscriptionCancelled';
+  return null;
 }
 
 export async function processStripeEvent(event: StripeEvent) {
@@ -304,10 +321,21 @@ export async function processStripeEvent(event: StripeEvent) {
     if (current) await updateSubscriptionState(admin, current, 'canceled', { provider_customer_id: null, canceled_at: new Date().toISOString() });
   }
 
+  const purchaseType = stringValue(metadata(object).purchase_type);
+  const brainEvent = brainEventForStripeEvent(event, purchaseType);
+  if (brainEvent) {
+    await publishEvent({
+      companyId: resolvedCompanyId,
+      name: brainEvent,
+      source: 'stripe',
+      idempotencyKey: `brain:stripe:${event.id}`,
+      payload: { stripe_event_id: event.id, event_type: event.type, purchase_type: purchaseType },
+    });
+  }
+
   const processedPayload = { ...objectValue(eventRow.payload), processed: true, processed_at: new Date().toISOString() } as Json;
   const completed = await admin.from('subscription_events').update({ payload: processedPayload }).eq('id', eventRow.id);
   if (completed.error) throw completed.error;
-  const purchaseType = stringValue(metadata(object).purchase_type);
   const notificationEvent = purchaseType === 'prepaid_minutes'
     ? 'prepaid.purchase'
     : event.type === 'customer.subscription.created' && object.status === 'trialing'
