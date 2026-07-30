@@ -101,18 +101,54 @@ export async function createOpportunityFromWhatsApp(input: {
   phone: string;
   notes?: string;
   hot: boolean;
+  nextAction?: 'call' | 'meeting' | 'email' | 'quote' | 'task';
 }) {
   const admin = createAdminClient() as any;
   const { data: closer } = await admin.from('employees').select('id').eq('company_id', input.companyId).eq('employee_type', 'closer').eq('status', 'active').maybeSingle();
   if (!closer) return null;
+  // A WhatsApp conversation can mention its need more than once. Reuse the
+  // commercial record already created for that conversation instead of
+  // assigning the same client to the Closer repeatedly.
+  const whatsappReference = `[whatsapp:${input.conversationId}]`;
+  const { data: existing, error: existingError } = await admin
+    .from('sales_opportunities')
+    .select('id')
+    .eq('company_id', input.companyId)
+    .ilike('notes', `%${whatsappReference}%`)
+    .limit(1)
+    .maybeSingle();
+  if (existingError) throw existingError;
+  if (existing?.id) return existing.id as string;
   const { data, error } = await admin.from('sales_opportunities').insert({
-    company_id: input.companyId, closer_employee_id: closer.id, source: 'whatsapp',
+    // The stable commercial source enum intentionally stays unchanged; the
+    // WhatsApp conversation reference is retained in notes for idempotency.
+    company_id: input.companyId, closer_employee_id: closer.id, source: 'other',
     name: input.name || 'Nuevo contacto de WhatsApp', phone: input.phone,
-    stage: input.hot ? 'interested' : 'new', notes: input.notes ?? null,
-    metadata: { whatsapp_conversation_id: input.conversationId },
+    stage: input.hot ? 'interested' : 'new',
+    notes: `${whatsappReference}\n${input.notes ?? ''}`.trim(),
   }).select('id').single();
   if (error?.code === '23505') return null;
   if (error) throw error;
-  await admin.from('sales_activities').insert({ company_id: input.companyId, opportunity_id: data.id, employee_id: closer.id, activity_type: 'message', status: 'completed', title: 'Lead recibido por WhatsApp IA', completed_at: new Date().toISOString(), outcome: input.notes ?? null, metadata: { whatsapp_conversation_id: input.conversationId } });
+  const activityType = input.nextAction ?? 'task';
+  const title = activityType === 'quote'
+    ? 'Preparar presupuesto solicitado por WhatsApp'
+    : activityType === 'meeting'
+      ? 'Concretar cita solicitada por WhatsApp'
+      : activityType === 'email'
+        ? 'Enviar información solicitada por WhatsApp'
+        : activityType === 'call'
+          ? 'Llamar al cliente que lo solicitó por WhatsApp'
+          : 'Revisar lead recibido por WhatsApp IA';
+  await admin.from('sales_activities').insert({
+    company_id: input.companyId,
+    opportunity_id: data.id,
+    employee_id: closer.id,
+    activity_type: activityType,
+    status: 'planned',
+    title,
+    scheduled_at: new Date().toISOString(),
+    outcome: input.notes ?? null,
+    metadata: { whatsapp_conversation_id: input.conversationId, source: 'whatsapp' },
+  });
   return data.id as string;
 }
