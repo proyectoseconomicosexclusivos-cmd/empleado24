@@ -38,7 +38,7 @@ jobs:
             ghcr.io/${{ github.repository }}:latest
       - uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.HETZNER_HOST }}
+          host: 2.28.17.124
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
           script: |
