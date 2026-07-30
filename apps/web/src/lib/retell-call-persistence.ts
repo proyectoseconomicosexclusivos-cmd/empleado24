@@ -7,6 +7,7 @@ import { maskPhone } from '@/lib/retell-runtime';
 import { notifyOwner } from '@/lib/owner-notifications';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createOpportunityFromReceptionistCall } from '@/lib/sales-runtime';
+import { getCustomer, publishEvent, saveMemory } from '@/lib/empleado24-brain';
 
 type UsageRecordClient = {
   rpc: (
@@ -258,6 +259,18 @@ export async function persistRetellCall(input: {
   if (result.error || !result.data) throw result.error ?? new Error('call_persistence_failed');
   const persisted = result.data as { id: string; usage_recorded_at: string | null };
 
+  if (!terminal) {
+    const customerPhone = call.direction === 'inbound' ? call.fromNumber : call.toNumber;
+    if (customerPhone) {
+      const customer = await getCustomer({ companyId: input.companyId, phone: customerPhone, source: 'phone' });
+      await publishEvent({
+        companyId: input.companyId, customerId: customer.id, employeeId: input.employeeId,
+        name: 'CallStarted', source: 'retell', idempotencyKey: `brain:call-start:${call.callId}`,
+        payload: { call_id: persisted.id, direction: call.direction ?? null },
+      });
+    }
+  }
+
   if (terminal && !persisted.usage_recorded_at) {
     const usage = await (admin as unknown as UsageRecordClient).rpc(
       'service_record_billable_usage_prepaid',
@@ -323,6 +336,12 @@ export async function persistRetellCall(input: {
     }
   }
   if (terminal) {
+    const customerPhone = call.direction === 'inbound' ? call.fromNumber : call.toNumber;
+    const customer = customerPhone ? await getCustomer({
+      companyId: input.companyId,
+      phone: customerPhone,
+      source: 'phone',
+    }) : null;
     await Promise.all([createAppointmentFromAnalysis({
       companyId: input.companyId,
       employeeId: input.employeeId,
@@ -334,7 +353,20 @@ export async function persistRetellCall(input: {
       summary: call.summary,
       analysis: call.analysis ?? {},
       fromNumber: call.fromNumber,
-    })]);
+    }),
+    ...(customer ? [
+      saveMemory({
+        companyId: input.companyId, customerId: customer.id, employeeId: input.employeeId,
+        type: 'summary', content: call.summary || `Llamada ${call.status}.`,
+        metadata: { call_id: persisted.id, duration_ms: call.durationMs ?? 0 },
+      }),
+      publishEvent({
+        companyId: input.companyId, customerId: customer.id, employeeId: input.employeeId,
+        name: 'CallFinished', source: 'retell', idempotencyKey: `brain:call:${call.callId}`,
+        payload: { call_id: persisted.id, status: call.status, duration_ms: call.durationMs ?? 0 },
+      }),
+    ] : []),
+    ]);
   }
   return { id: persisted.id, terminal };
 }
