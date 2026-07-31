@@ -1,5 +1,4 @@
-name: Deploy Hetzner production
-# Every main release is built once and promoted to the managed VPS.
+name: Recover Hetzner deploy access
 
 on:
   push:
@@ -8,113 +7,45 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 concurrency:
   group: empleado24-production
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  recover:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - name: Checkout release
-        uses: actions/checkout@v4
-
-      - name: Authenticate container registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push release image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          build-args: |
-            NEXT_PUBLIC_APP_URL=https://empleado24.com
-            NEXT_PUBLIC_SUPABASE_URL=https://zfgocnczkhvywwhdihwp.supabase.co
-            NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_J-PHkCyuZ4x67-T64G83hg_I-dsITn4
-          tags: |
-            ghcr.io/${{ github.repository }}:${{ github.sha }}
-            ghcr.io/${{ github.repository }}:latest
-
-      - name: Deploy, verify health and rollback on failure
+      - name: Authorize existing deployment key in installed system
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: 2.28.17.124
-          username: deploy
+          username: root
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          command_timeout: 15m
+          command_timeout: 5m
           script: |
-            set -eu
-            cd /opt/empleado24
-
-            echo "DEPLOY: synchronize release configuration"
-            git pull --ff-only origin main
-
-            compose() {
-              docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml "$@"
-            }
-
-            current_container="$(compose ps -q app)"
-            if [ -z "$current_container" ]; then
-              echo "DEPLOY: current application container not found"
-              exit 1
+            set -eux
+            mkdir -p /mnt/host
+            root_device="$(blkid -L cloudimg-rootfs || true)"
+            if [ -z "$root_device" ]; then
+              root_device="$(lsblk -b -rpno NAME,FSTYPE,SIZE,MOUNTPOINT | awk '$2 == "ext4" && $4 == "" { print $3 " " $1 }' | sort -nr | head -1 | cut -d' ' -f2-)"
             fi
-
-            previous_image="$(docker inspect --format='{{.Config.Image}}' "$current_container")"
-            release_image="ghcr.io/${{ github.repository }}:${{ github.sha }}"
-            echo "DEPLOY: previous image $previous_image"
-            echo "DEPLOY: new image $release_image"
-
-            echo "DEPLOY: pull release image"
-            APP_IMAGE="$release_image" compose pull app cron backup
-
-            echo "DEPLOY: restart application services"
-            APP_IMAGE="$release_image" compose up -d --remove-orphans app cron backup
-
-            echo "HEALTH: verify production"
-            healthy=false
-            for attempt in $(seq 1 24); do
-              if curl --fail --silent --show-error https://empleado24.com/api/health >/dev/null; then
-                healthy=true
-                break
-              fi
-              echo "HEALTH: attempt $attempt/24 failed"
-              sleep 5
-            done
-
-            if [ "$healthy" = true ]; then
-              echo "HEALTH: OK"
-              echo "DEPLOY: SUCCESS"
-              compose ps
-              exit 0
+            test -n "$root_device"
+            mount "$root_device" /mnt/host
+            test -f /mnt/host/etc/os-release
+            if ! grep -q '^deploy:' /mnt/host/etc/passwd; then
+              chroot /mnt/host useradd -m -s /bin/bash deploy
             fi
-
-            echo "ROLLBACK: production health check failed"
-            echo "ROLLBACK: restoring $previous_image"
-            APP_IMAGE="$previous_image" compose up -d --force-recreate app cron backup
-
-            rollback_healthy=false
-            for attempt in $(seq 1 24); do
-              if curl --fail --silent --show-error https://empleado24.com/api/health >/dev/null; then
-                rollback_healthy=true
-                break
-              fi
-              echo "ROLLBACK HEALTH: attempt $attempt/24 failed"
-              sleep 5
-            done
-
-            if [ "$rollback_healthy" = true ]; then
-              echo "ROLLBACK: previous release restored and healthy"
-              compose ps
-              exit 1
-            fi
-
-            echo "ROLLBACK: FAILED — manual intervention required"
-            compose ps
-            exit 2
+            deploy_uid="$(awk -F: '$1 == "deploy" { print $3 }' /mnt/host/etc/passwd)"
+            deploy_gid="$(awk -F: '$1 == "deploy" { print $4 }' /mnt/host/etc/passwd)"
+            install -d -m 700 /mnt/host/home/deploy/.ssh
+            touch /mnt/host/home/deploy/.ssh/authorized_keys
+            public_key='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICChERDAMmWaDn9o032aiNwDoTrW/ZqJP2Ckvwvsl5yn github-actions-empleado24'
+            grep -qxF "$public_key" /mnt/host/home/deploy/.ssh/authorized_keys || echo "$public_key" >> /mnt/host/home/deploy/.ssh/authorized_keys
+            chown -R "$deploy_uid:$deploy_gid" /mnt/host/home/deploy/.ssh
+            chmod 700 /mnt/host/home/deploy/.ssh
+            chmod 600 /mnt/host/home/deploy/.ssh/authorized_keys
+            sync
+            echo "RECOVERY: deployment key installed"
+            reboot
