@@ -52,8 +52,7 @@ jobs:
           script: |
             set -eu
             cd /opt/empleado24
-            echo "DEPLOY: synchronize release configuration"
-            git pull --ff-only origin main
+            echo "DEPLOY: use immutable release image"
 
             compose() {
               docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml "$@"
