@@ -8,6 +8,7 @@ import { notifyOwner } from '@/lib/owner-notifications';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createOpportunityFromReceptionistCall } from '@/lib/sales-runtime';
 import { getCustomer, publishEvent, saveMemory } from '@/lib/empleado24-brain';
+import { recordBusinessEvent } from '@/lib/business-events';
 
 type UsageRecordClient = {
   rpc: (
@@ -332,6 +333,13 @@ export async function persistRetellCall(input: {
         message: `La Recepcionista ha atendido una llamada de ${Math.round((call.durationMs ?? 0) / 1000)} segundos.`,
         companyId: input.companyId,
         event: 'call.completed',
+      }).catch(() => undefined);
+      await recordBusinessEvent({
+        eventName: call.status === 'ended' ? 'call_completed' : 'critical_error',
+        companyId: input.companyId,
+        source: 'retell',
+        idempotencyKey: `call-completed:${call.callId}`,
+        metadata: { call_id: persisted.id, provider_call_id: call.callId, duration_ms: call.durationMs ?? 0, status: call.status },
       }).catch(() => undefined);
     }
   }
