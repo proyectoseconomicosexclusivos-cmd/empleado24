@@ -82,7 +82,7 @@ jobs:
               for attempt in $(seq 1 6); do
                 health_payload="$(curl --silent --show-error https://empleado24.com/api/health || true)"
                 echo "HEALTH RESPONSE: $health_payload"
-                if printf '%s' "$health_payload" | grep -q '"status":"ok"'; then
+                if printf '%s' "$health_payload" | grep -q '^{"status":"ok"'; then
                   healthy=true
                   break
                 fi
@@ -116,7 +116,7 @@ jobs:
               for attempt in $(seq 1 6); do
                 health_payload="$(curl --silent --show-error https://empleado24.com/api/health || true)"
                 echo "HEALTH RESPONSE: $health_payload"
-                if printf '%s' "$health_payload" | grep -q '"status":"ok"'; then
+                if printf '%s' "$health_payload" | grep -q '^{"status":"ok"'; then
                   rollback_healthy=true
                   break
                 fi
