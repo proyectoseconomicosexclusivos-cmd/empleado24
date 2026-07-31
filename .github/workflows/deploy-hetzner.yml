@@ -79,12 +79,14 @@ jobs:
             healthy=false
             if [ "$startup_rc" -eq 0 ]; then
               echo "HEALTH: verify production"
-              for attempt in $(seq 1 24); do
-                if curl --fail --silent --show-error https://empleado24.com/api/health >/dev/null; then
+              for attempt in $(seq 1 6); do
+                health_payload="$(curl --silent --show-error https://empleado24.com/api/health || true)"
+                echo "HEALTH RESPONSE: $health_payload"
+                if printf '%s' "$health_payload" | grep -q '"status":"ok"'; then
                   healthy=true
                   break
                 fi
-                echo "HEALTH: attempt $attempt/24 failed"
+                echo "HEALTH: attempt $attempt/6 failed"
                 sleep 5
               done
             fi
@@ -111,12 +113,14 @@ jobs:
 
             rollback_healthy=false
             if [ "$rollback_start_rc" -eq 0 ]; then
-              for attempt in $(seq 1 24); do
-                if curl --fail --silent --show-error https://empleado24.com/api/health >/dev/null; then
+              for attempt in $(seq 1 6); do
+                health_payload="$(curl --silent --show-error https://empleado24.com/api/health || true)"
+                echo "HEALTH RESPONSE: $health_payload"
+                if printf '%s' "$health_payload" | grep -q '"status":"ok"'; then
                   rollback_healthy=true
                   break
                 fi
-                echo "ROLLBACK HEALTH: attempt $attempt/24 failed"
+                echo "ROLLBACK HEALTH: attempt $attempt/6 failed"
                 sleep 5
               done
             fi
