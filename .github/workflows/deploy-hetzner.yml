@@ -50,7 +50,7 @@ jobs:
           key: ${{ secrets.HETZNER_SSH_KEY }}
           command_timeout: 15m
           script: |
-            set -eu
+            set -u
             cd /opt/empleado24
             echo "DEPLOY: use immutable release image"
 
@@ -70,44 +70,59 @@ jobs:
             echo "DEPLOY: previous image $previous_image"
             echo "DEPLOY: new image $release_image"
             echo "DEPLOY: pull release image"
-            APP_IMAGE="$release_image" compose pull app cron backup
+            APP_IMAGE="$release_image" compose pull app cron backup || exit 1
 
             echo "DEPLOY: restart application services"
-            APP_IMAGE="$release_image" compose up -d --remove-orphans app cron backup
+            APP_IMAGE="$release_image" compose up -d --no-deps app
+            startup_rc=$?
 
-            echo "HEALTH: verify production"
             healthy=false
-            for attempt in $(seq 1 24); do
-              if curl --fail --silent --show-error https://empleado24.com/api/health >/dev/null; then
-                healthy=true
-                break
-              fi
-              echo "HEALTH: attempt $attempt/24 failed"
-              sleep 5
-            done
+            if [ "$startup_rc" -eq 0 ]; then
+              echo "HEALTH: verify production"
+              for attempt in $(seq 1 24); do
+                if curl --fail --silent --show-error https://empleado24.com/api/health >/dev/null; then
+                  healthy=true
+                  break
+                fi
+                echo "HEALTH: attempt $attempt/24 failed"
+                sleep 5
+              done
+            fi
 
             if [ "$healthy" = true ]; then
+              APP_IMAGE="$release_image" compose up -d --no-deps cron backup
               echo "HEALTH: OK"
               echo "DEPLOY: SUCCESS"
               compose ps
               exit 0
             fi
 
-            echo "ROLLBACK: production health check failed"
+            echo "DIAGNOSTICS: new application did not become healthy"
+            compose ps
+            compose logs --no-color --tail=200 app || true
+            new_container="$(compose ps -q app)"
+            if [ -n "$new_container" ]; then
+              docker inspect --format='{{json .State.Health}}' "$new_container" || true
+            fi
+
             echo "ROLLBACK: restoring $previous_image"
-            APP_IMAGE="$previous_image" compose up -d --force-recreate app cron backup
+            APP_IMAGE="$previous_image" compose up -d --force-recreate --no-deps app
+            rollback_start_rc=$?
 
             rollback_healthy=false
-            for attempt in $(seq 1 24); do
-              if curl --fail --silent --show-error https://empleado24.com/api/health >/dev/null; then
-                rollback_healthy=true
-                break
-              fi
-              echo "ROLLBACK HEALTH: attempt $attempt/24 failed"
-              sleep 5
-            done
+            if [ "$rollback_start_rc" -eq 0 ]; then
+              for attempt in $(seq 1 24); do
+                if curl --fail --silent --show-error https://empleado24.com/api/health >/dev/null; then
+                  rollback_healthy=true
+                  break
+                fi
+                echo "ROLLBACK HEALTH: attempt $attempt/24 failed"
+                sleep 5
+              done
+            fi
 
             if [ "$rollback_healthy" = true ]; then
+              APP_IMAGE="$previous_image" compose up -d --no-deps cron backup
               echo "ROLLBACK: previous release restored and healthy"
               compose ps
               exit 1
