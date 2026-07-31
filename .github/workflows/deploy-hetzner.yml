@@ -54,6 +54,13 @@ jobs:
             cd /opt/empleado24
             echo "DEPLOY: use immutable release image"
 
+            supabase_publishable_key="sb_publishable_J-PHkCyuZ4x67-T64G83hg_I-dsITn4"
+            if grep -q '^NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=' .env.production; then
+              sed -i "s|^NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=.*$|NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$supabase_publishable_key|" .env.production
+            else
+              printf '\nNEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=%s\n' "$supabase_publishable_key" >> .env.production
+            fi
+
             compose() {
               docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml "$@"
             }
