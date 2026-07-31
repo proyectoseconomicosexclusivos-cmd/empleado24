@@ -322,6 +322,28 @@ export async function processStripeEvent(event: StripeEvent) {
   }
 
   const purchaseType = stringValue(metadata(object).purchase_type);
+  const commercialEvent = purchaseType === 'prepaid_minutes'
+    ? 'minutes_purchased'
+    : event.type === 'invoice.paid' || event.type === 'invoice.payment_succeeded'
+      ? 'payment_completed'
+      : event.type === 'customer.subscription.created' && object.status === 'trialing'
+        ? 'trial_started'
+        : event.type === 'customer.subscription.updated' && object.status === 'active'
+          ? 'subscription_active'
+          : event.type === 'customer.subscription.deleted'
+            ? 'subscription_cancelled'
+            : event.type === 'customer.subscription.updated' && object.cancel_at_period_end === false && resolvedSubscription?.state === 'canceled'
+              ? 'subscription_reactivated'
+              : null;
+  if (commercialEvent) {
+    await recordBusinessEvent({
+      eventName: commercialEvent,
+      companyId: resolvedCompanyId,
+      source: 'stripe.webhook',
+      idempotencyKey: `stripe:${event.id}:${commercialEvent}`,
+      metadata: { provider_event_id: event.id, provider_object_id: stringValue(object.id), purchase_type: purchaseType },
+    }).catch(() => undefined);
+  }
   const brainEvent = brainEventForStripeEvent(event, purchaseType);
   if (brainEvent) {
     await publishEvent({
@@ -352,6 +374,7 @@ export async function processStripeEvent(event: StripeEvent) {
     message: purchaseType === 'prepaid_minutes' ? 'Se ha realizado una recarga de minutos.' : 'La actividad comercial se ha actualizado correctamente.',
     companyId: resolvedCompanyId,
     event: notificationEvent,
+    idempotencyKey: `owner:stripe:${event.id}`,
   }).catch((error) => console.warn(JSON.stringify({ event: 'owner_notification_failed', stripe_event: event.id, error: error instanceof Error ? error.message : String(error) })));
   return { duplicate: false };
 }
