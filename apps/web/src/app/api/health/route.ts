@@ -15,7 +15,7 @@ async function probe(name: string, url: string, headers: Record<string, string>)
 export async function GET() {
   const checks: Record<string, unknown> = { cron: { status: process.env.CRON_SECRET ? 'configured' : 'missing' }, queue: { status: process.env.CRON_SECRET ? 'configured' : 'missing' }, retell: { status: 'tenant_scoped' }, zadarma: { status: 'tenant_scoped' } };
   if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)
-    checks.supabase = await probe('supabase', `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/companies?select=id&limit=1`, { apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY });
+    checks.supabase = await probe('supabase', `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/health`, { apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY });
   else checks.supabase = { status: 'missing_configuration' };
   if (process.env.STRIPE_SECRET_KEY)
     checks.stripe = await probe('stripe', 'https://api.stripe.com/v1/balance', { Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}` });
