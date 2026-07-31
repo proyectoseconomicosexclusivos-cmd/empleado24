@@ -37,7 +37,7 @@ jobs:
           build-args: |
             NEXT_PUBLIC_APP_URL=https://empleado24.com
             NEXT_PUBLIC_SUPABASE_URL=https://zfgocnczkhvywwhdihwp.supabase.co
-            NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_J-PHkCyuZ4x67-T64G83hg_I-dsITn4
+            NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_FQhptWgDotjOCr7lnI4o1w_0X20N0uD
           tags: |
             ghcr.io/${{ github.repository }}:${{ github.sha }}
             ghcr.io/${{ github.repository }}:latest
@@ -54,7 +54,7 @@ jobs:
             cd /opt/empleado24
             echo "DEPLOY: use immutable release image"
 
-            supabase_publishable_key="sb_publishable_J-PHkCyuZ4x67-T64G83hg_I-dsITn4"
+            supabase_publishable_key="sb_publishable_FQhptWgDotjOCr7lnI4o1w_0X20N0uD"
             if grep -q '^NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=' .env.production; then
               sed -i "s|^NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=.*$|NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$supabase_publishable_key|" .env.production
             else
