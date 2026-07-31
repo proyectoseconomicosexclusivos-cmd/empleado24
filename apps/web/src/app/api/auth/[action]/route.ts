@@ -77,6 +77,10 @@ export async function POST(
         user_metadata: { ...data.user.user_metadata, owner_first_login_notified: true },
       }).catch(() => undefined);
     }
+    await recordBusinessEvent({
+      eventName: 'login', userId: data.user.id, source: 'auth.login',
+      idempotencyKey: `login:${data.user.id}:${new Date().toISOString().slice(0, 13)}`,
+    }).catch(() => undefined);
     return NextResponse.json({ authenticated: true });
   }
 
@@ -112,7 +116,11 @@ export async function POST(
       message: `Se ha creado una cuenta con ${targetEmail}.`,
       event: 'user.registered',
     }).catch(() => undefined);
-    await recordBusinessEvent({ eventName: 'registration_started', userId: data.user?.id ?? null, metadata: { source: 'auth.register' } }).catch(() => undefined);
+    const registrationKey = data.user?.id ? `signup:${data.user.id}` : `signup:${targetEmail}`;
+    await Promise.all([
+      recordBusinessEvent({ eventName: 'registration_started', userId: data.user?.id ?? null, source: 'auth.register', idempotencyKey: registrationKey, metadata: { source: 'auth.register' } }),
+      recordBusinessEvent({ eventName: 'signup_completed', userId: data.user?.id ?? null, source: 'auth.register', idempotencyKey: `${registrationKey}:completed`, metadata: { source: 'auth.register' } }),
+    ]).catch(() => undefined);
     return NextResponse.json({ authenticated: Boolean(data.session) });
   }
 
