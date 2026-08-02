@@ -25,14 +25,14 @@ export async function refreshAnalyticsDaily(date = new Date()) {
     admin.from('business_events').select('event_name,visitor_id,anonymous_id').gte('created_at', startIso).lt('created_at', endIso),
     admin.from('companies').select('*', { count: 'exact', head: true }).gte('created_at', startIso).lt('created_at', endIso),
     admin.from('invoices').select('amount_paid_cents').eq('status', 'paid').gte('paid_at', startIso).lt('paid_at', endIso),
-    admin.from('subscriptions').select('state,plan_key').in('state', ['active', 'past_due', 'incomplete', 'canceled', 'canceling', 'trialing']),
+    admin.from('subscriptions').select('state,plan_key,trial_ends_at').in('state', ['active', 'past_due', 'incomplete', 'canceled', 'canceling', 'trialing']),
   ]);
   const error = eventsError ?? companiesError ?? invoicesError ?? subscriptionsError;
   if (error) throw error;
   const items = (events ?? []) as Array<{ event_name: string; visitor_id: string | null; anonymous_id: string | null }>;
   const count = (name: string) => items.filter((event) => event.event_name === name).length;
   const visitors = new Set(items.filter((event) => ['landing_view', 'page_view', 'pricing_view'].includes(event.event_name)).map((event) => event.visitor_id ?? event.anonymous_id).filter(Boolean)).size;
-  const current = (subscriptions ?? []) as Array<{ state: string; plan_key: string | null }>;
+  const current = (subscriptions ?? []) as Array<{ state: string; plan_key: string | null; trial_ends_at: string | null }>;
   const result = await admin.from('analytics_daily').upsert({
     date: key,
     visitors,
@@ -40,7 +40,7 @@ export async function refreshAnalyticsDaily(date = new Date()) {
     emails_confirmed: count('email_confirmed'),
     companies_created: companies ?? count('company_created'),
     trials_started: count('trial_started'),
-    trials_active: current.filter((subscription) => subscription.state === 'trialing').length,
+    trials_active: current.filter((subscription) => subscription.state === 'trialing' && (!subscription.trial_ends_at || new Date(subscription.trial_ends_at) > new Date())).length,
     employees_hired: count('employee_hired'),
     calls_completed: count('call_completed'),
     emails_sent: count('email_sent'),
