@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 
-export type BusinessEventName = 'landing_view' | 'page_view' | 'pricing_view' | 'signup_started' | 'signup_completed' | 'registration_started' | 'email_verified' | 'login' | 'trial_started' | 'trial_finished' | 'employee_hired' | 'phone_connected' | 'calendar_connected' | 'checkout_started' | 'payment_completed' | 'checkout_completed' | 'subscription_active' | 'minutes_purchased' | 'first_login' | 'first_call' | 'call_completed' | 'cancellation_requested' | 'subscription_cancelled' | 'subscription_reactivated' | 'support_chat_opened' | 'critical_error' | 'sales_lead_created' | 'sales_lead_hot' | 'sales_meeting_scheduled' | 'sales_quote_sent' | 'sales_won' | 'sales_lost' | 'whatsapp_message_received' | 'whatsapp_quote_requested' | 'whatsapp_call_requested' | 'whatsapp_meeting_scheduled' | 'whatsapp_converted' | 'whatsapp_escalated' | 'whatsapp_lead_created';
+export type BusinessEventName = 'landing_view' | 'page_view' | 'pricing_view' | 'signup_started' | 'signup_completed' | 'registration_started' | 'email_verified' | 'email_confirmed' | 'login' | 'company_created' | 'trial_started' | 'trial_finished' | 'employee_hired' | 'phone_connected' | 'calendar_connected' | 'checkout_started' | 'payment_completed' | 'checkout_completed' | 'subscription_active' | 'minutes_purchased' | 'first_login' | 'first_call' | 'call_completed' | 'email_sent' | 'meeting_booked' | 'sale_won' | 'sale_lost' | 'cancellation_requested' | 'subscription_cancelled' | 'subscription_reactivated' | 'support_chat_opened' | 'critical_error' | 'sales_lead_created' | 'sales_lead_hot' | 'sales_meeting_scheduled' | 'sales_quote_sent' | 'sales_won' | 'sales_lost' | 'whatsapp_message_received' | 'whatsapp_quote_requested' | 'whatsapp_call_requested' | 'whatsapp_meeting_scheduled' | 'whatsapp_converted' | 'whatsapp_escalated' | 'whatsapp_lead_created';
 
 export function recordBusinessEvent(input: {
   eventName: BusinessEventName;
@@ -13,6 +13,8 @@ export function recordBusinessEvent(input: {
   sessionId?: string | null;
   source?: string;
   idempotencyKey?: string;
+  visitorId?: string | null;
+  utm?: { source?: string | null; medium?: string | null; campaign?: string | null; content?: string | null; term?: string | null; fbclid?: string | null; referrer?: string | null; landing?: string | null };
 }) {
   return (async () => {
     const admin = createAdminClient() as any;
@@ -30,12 +32,16 @@ export function recordBusinessEvent(input: {
       session_id: input.sessionId ?? null,
       source: input.source ?? 'app',
       idempotency_key: idempotencyKey,
+      visitor_id: input.visitorId ?? input.anonymousId ?? null,
+      utm_source: input.utm?.source ?? null,
+      utm_medium: input.utm?.medium ?? null,
+      utm_campaign: input.utm?.campaign ?? null,
+      utm_content: input.utm?.content ?? null,
+      utm_term: input.utm?.term ?? null,
+      fbclid: input.utm?.fbclid ?? null,
+      referrer: input.utm?.referrer ?? null,
+      landing: input.utm?.landing ?? input.path ?? null,
     }, { onConflict: 'idempotency_key', ignoreDuplicates: true });
-    if (error) {
-      const code = String(error.code ?? '');
-      if (code !== 'PGRST204' && code !== '42703') throw error;
-      const legacy = await admin.from('business_events').insert({ event_name: input.eventName, path: input.path ?? null, anonymous_id: input.anonymousId ?? null, user_id: input.userId ?? null, company_id: input.companyId ?? null, metadata: input.metadata ?? {} });
-      if (legacy.error) throw legacy.error;
-    }
+    if (error) throw error;
   })();
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { guardRateLimit } from '@/lib/api-guard';
+import { recordBusinessEvent } from '@/lib/business-events';
 
 export async function GET(request: Request) {
   const limited = await guardRateLimit(request, {
@@ -15,5 +16,12 @@ export async function GET(request: Request) {
   const supabase = await createClient();
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) return NextResponse.redirect(new URL('/login?error=invalid-link', url.origin));
+  const { data: auth } = await supabase.auth.getUser();
+  if (auth.user?.email_confirmed_at && next === '/app') {
+    await recordBusinessEvent({
+      eventName: 'email_confirmed', userId: auth.user.id, source: 'auth.callback',
+      idempotencyKey: `email-confirmed:${auth.user.id}:${auth.user.email_confirmed_at}`,
+    }).catch(() => undefined);
+  }
   return NextResponse.redirect(new URL(next, url.origin));
 }

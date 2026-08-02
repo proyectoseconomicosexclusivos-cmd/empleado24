@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server';
 import { headers } from 'next/headers';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { notifyOwner } from '@/lib/owner-notifications';
+import { recordBusinessEvent } from '@/lib/business-events';
 
 const locales = new Set(['es', 'en', 'pt', 'fr', 'it', 'de']);
 const currencies = new Set(['EUR', 'USD', 'GBP', 'MXN', 'BRL']);
@@ -68,6 +69,10 @@ export async function completeOnboarding(formData: FormData) {
   });
 
   if (error) redirect(`${returnTo}?error=save`);
+  await Promise.all([
+    recordBusinessEvent({ eventName: 'company_created', companyId, userId: auth.user.id, source: 'onboarding', idempotencyKey: `company-created:${companyId}` }),
+    recordBusinessEvent({ eventName: 'employee_hired', companyId, userId: auth.user.id, source: 'onboarding', idempotencyKey: `employee-hired:onboarding:${companyId}` }),
+  ]).catch(() => undefined);
   void notifyOwner({
     subject: 'Empleado24 · empresa creada',
     message: `La empresa ${companyName} ha completado el onboarding inicial.`,

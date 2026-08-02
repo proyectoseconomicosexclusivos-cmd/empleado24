@@ -1,11 +1,15 @@
 import 'server-only';
+import { createHash } from 'node:crypto';
 import { structuredLog } from '@/lib/structured-logger';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 type OwnerNotification = {
   subject: string;
   message: string;
   companyId?: string;
   event?: string;
+  idempotencyKey?: string;
+  cooldownSeconds?: number;
 };
 
 function commercialNotification(input: OwnerNotification) {
@@ -34,7 +38,9 @@ function commercialNotification(input: OwnerNotification) {
   if (event === 'whatsapp.message.received') return { subject: '💬 Nuevo WhatsApp recibido', text: `💬 Nuevo WhatsApp recibido${company}\n\n${message}` };
   if (event === 'whatsapp.quote.requested') return { subject: '💬 Cliente solicita presupuesto', text: `💬 Cliente solicita presupuesto${company}\n\n${message}` };
   if (event === 'whatsapp.call.requested') return { subject: '💬 Cliente quiere llamada', text: `💬 Cliente quiere llamada${company}\n\n${message}` };
-  if (event === 'whatsapp.meeting.scheduled') return { subject: '💬 Cliente agenda reunión', text: `💬 Cliente agenda reunión${company}\n\n${message}` };
+  if (event === 'whatsapp.meeting.requested') return { subject: '💬 Cliente solicita una cita', text: `💬 Cliente solicita una cita${company}\n\n${message}` };
+  if (event === 'whatsapp.email.requested') return { subject: '💬 Cliente pide información por email', text: `💬 Cliente pide información por email${company}\n\n${message}` };
+  if (event === 'whatsapp.lead.created') return { subject: '💬 Nuevo cliente interesado', text: `💬 Nuevo cliente interesado${company}\n\n${message}` };
   if (event === 'whatsapp.converted') return { subject: '💬 Cliente convertido desde WhatsApp', text: `💬 Cliente convertido desde WhatsApp${company}\n\n${message}` };
   if (event === 'whatsapp.escalated') return { subject: '💬 Conversación escalada', text: `💬 Conversación escalada${company}\n\n${message}` };
   if (event === 'user.registered') {
@@ -102,6 +108,22 @@ export async function notifyOwner(input: OwnerNotification) {
   const commercial = commercialNotification(input);
   const text = commercial.text;
   const deliveries: string[] = [];
+  const eventKey = input.idempotencyKey ?? createHash('sha256')
+    .update(`${input.event ?? commercial.subject}:${input.companyId ?? 'platform'}`)
+    .digest('hex');
+  const cooldownSeconds = Math.max(1, Math.min(604800, input.cooldownSeconds ?? (input.event?.startsWith('guardian.') ? 3600 : 900)));
+  const claim = await (createAdminClient() as any).rpc('service_claim_owner_notification', {
+    target_event_key: eventKey,
+    target_cooldown_seconds: cooldownSeconds,
+  });
+  if (claim.error) {
+    structuredLog('warn', 'owner_notification_claim_failed', { event: input.event, error: claim.error.message });
+    return { delivered: false, channels: [], reason: 'claim_failed' as const };
+  }
+  if (claim.data !== true) {
+    structuredLog('info', 'owner_notification_deduplicated', { event: input.event, company_id: input.companyId, event_key: eventKey });
+    return { delivered: false, channels: [], reason: 'cooldown' as const };
+  }
 
   if (ownerEmail && brevoKey && senderEmail) {
     try {
