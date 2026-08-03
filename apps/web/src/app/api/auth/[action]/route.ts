@@ -120,7 +120,7 @@ export async function POST(
     await Promise.all([
       recordBusinessEvent({ eventName: 'registration_started', userId: data.user?.id ?? null, source: 'auth.register', idempotencyKey: registrationKey, metadata: { source: 'auth.register' } }),
       recordBusinessEvent({ eventName: 'signup_completed', userId: data.user?.id ?? null, source: 'auth.register', idempotencyKey: `${registrationKey}:completed`, metadata: { source: 'auth.register' } }),
-    ]).catch(() => undefined);
+    ]);
     return NextResponse.json({ authenticated: Boolean(data.session) });
   }
 
