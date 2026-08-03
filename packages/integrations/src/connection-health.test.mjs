@@ -34,6 +34,23 @@ test('Retell API key produces a successful health result', async () => {
   assert.equal(result.details.httpStatus, 200);
 });
 
+test('Zadarma uses its documented hexadecimal-HMAC signature format', async () => {
+  globalThis.fetch = async (_url, init) => {
+    assert.equal(
+      init.headers.Authorization,
+      'tenant-key:OGJiZTk1NDA5MTU0N2M0NmU5Njc1MzNlY2QxMDg2MTk2MTVmNzI4Ng==',
+    );
+    return new Response('{"status":"success","balance":10}', { status: 200 });
+  };
+  const result = await testProviderConnection({
+    providerKey: 'zadarma',
+    authMethod: 'api_key',
+    credentials: { api_key: 'tenant-key', api_secret: 'customer-secret' },
+    publicConfig: {},
+  });
+  assert.equal(result.status, 'connected');
+});
+
 test('OAuth 401 is classified as expired', async () => {
   globalThis.fetch = async () => new Response('{}', { status: 401 });
   const result = await testProviderConnection({
