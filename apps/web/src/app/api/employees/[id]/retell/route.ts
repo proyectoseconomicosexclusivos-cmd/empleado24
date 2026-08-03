@@ -77,14 +77,14 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       { status: 409 },
     );
   const publicConfig = integration.public_config as Record<string, Json | undefined>;
-  const voiceId = typeof publicConfig.voice_id === 'string' ? publicConfig.voice_id.trim() : '';
+  let voiceId = typeof publicConfig.voice_id === 'string' ? publicConfig.voice_id.trim() : '';
   const configuredFromNumber =
     typeof publicConfig.from_number === 'string' ? publicConfig.from_number.trim() : '';
-  if (!voiceId || (configuredFromNumber && !/^\+[1-9]\d{7,14}$/.test(configuredFromNumber)))
+  if (configuredFromNumber && !/^\+[1-9]\d{7,14}$/.test(configuredFromNumber))
     return NextResponse.json(
       {
         error: 'retell_phone_configuration_missing',
-        message: 'Selecciona una voz Retell válida.',
+        message: 'Configura un número de teléfono válido antes de preparar la línea.',
       },
       { status: 409 },
     );
@@ -106,6 +106,29 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     ]);
     if (!zadarma || zadarma.status !== 'connected' || !zadarma.enabled) {
       return NextResponse.json({ error: 'zadarma_connection_required', message: 'Conecta y verifica tu cuenta Zadarma antes de preparar la línea.' }, { status: 409 });
+    }
+    const voices = await adapter.listVoices();
+    if ('error' in voices) throw new Error(`${voices.error.code}:${voices.error.message}`);
+    if (!voices.data.some((voice) => voice.id === voiceId)) {
+      const defaultVoice = voices.data[0];
+      if (!defaultVoice)
+        return NextResponse.json(
+          {
+            error: 'retell_voice_unavailable',
+            message: 'La cuenta central no tiene una voz disponible en este momento. Inténtalo de nuevo en unos minutos.',
+          },
+          { status: 502 },
+        );
+      voiceId = defaultVoice.id;
+      const { error: voiceSaveError } = await admin
+        .from('company_integrations')
+        .update({
+          public_config: { ...publicConfig, voice_id: voiceId } as Json,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', integration.id)
+        .eq('company_id', employee.company_id);
+      if (voiceSaveError) throw voiceSaveError;
     }
     const zadarmaConfig = (zadarma.public_config ?? {}) as Record<string, unknown>;
     const { data: current } = await admin
