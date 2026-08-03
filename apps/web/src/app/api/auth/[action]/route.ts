@@ -118,6 +118,7 @@ export async function POST(
     }).catch(() => undefined);
     const registrationKey = data.user?.id ? `signup:${data.user.id}` : `signup:${targetEmail}`;
     await Promise.all([
+      recordBusinessEvent({ eventName: 'signup_started', userId: data.user?.id ?? null, source: 'auth.register', idempotencyKey: `${registrationKey}:started`, metadata: { source: 'auth.register' } }),
       recordBusinessEvent({ eventName: 'registration_started', userId: data.user?.id ?? null, source: 'auth.register', idempotencyKey: registrationKey, metadata: { source: 'auth.register' } }),
       recordBusinessEvent({ eventName: 'signup_completed', userId: data.user?.id ?? null, source: 'auth.register', idempotencyKey: `${registrationKey}:completed`, metadata: { source: 'auth.register' } }),
     ]);
