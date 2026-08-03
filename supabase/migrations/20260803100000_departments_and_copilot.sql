@@ -55,3 +55,8 @@ create policy "admins manage company departments" on public.company_departments 
 grant select on public.departments, public.company_departments to authenticated;
 grant all on public.departments, public.company_departments to service_role;
 revoke all on public.departments, public.company_departments from anon;
+
+alter table public.business_events drop constraint if exists business_events_event_name_check;
+alter table public.business_events add constraint business_events_event_name_check check (event_name in (
+  'landing_view','page_view','pricing_view','signup_started','signup_completed','registration_started','email_verified','email_confirmed','login','company_created','trial_started','trial_finished','employee_hired','phone_connected','calendar_connected','checkout_started','payment_completed','checkout_completed','subscription_active','minutes_purchased','first_login','first_call','call_completed','email_sent','meeting_booked','sale_won','sale_lost','cancellation_requested','subscription_cancelled','subscription_reactivated','support_chat_opened','critical_error','sales_lead_created','sales_lead_hot','sales_meeting_scheduled','sales_quote_sent','whatsapp_message_received','whatsapp_quote_requested','whatsapp_call_requested','whatsapp_meeting_scheduled','whatsapp_converted','whatsapp_escalated','whatsapp_lead_created','department_activated'
+));
