@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/server';
 import { stripeEnv } from '@/lib/env';
 import { notifyOwner } from '@/lib/owner-notifications';
 import { publishEvent, type BrainEventName } from '@/lib/empleado24-brain';
+import { departmentForPlan } from '@/lib/departments';
 
 type Admin = SupabaseClient<Database>;
 type PlanRow = Database['public']['Tables']['billing_plans']['Row'];
@@ -28,7 +29,9 @@ export function billingPlan(plan: PlanRow): BillingPlan {
         ? 'employee_closer_monthly'
         : plan.plan_key === 'employee_whatsapp'
           ? 'employee_whatsapp_monthly'
-        : undefined,
+          : plan.plan_key === 'department_commercial'
+            ? 'department_commercial_monthly'
+            : undefined,
     name: plan.name,
     description: plan.description,
     amountMinor: plan.monthly_price_cents,
@@ -156,11 +159,13 @@ async function syncSubscription(admin: Admin, object: Record<string, unknown>, c
     trial_ends_at: stripeTimestamp(object.trial_end), current_period_starts_at: stripeTimestamp(period.start), current_period_ends_at: stripeTimestamp(period.end),
     canceled_at: stripeTimestamp(object.canceled_at),
   });
-  if (
-    (key === 'employee_email' || key === 'employee_closer' || key === 'employee_whatsapp')
-    && ['trialing', 'active', 'canceling'].includes(state)
-  ) {
-    await activateEmployeeForPlan(admin, current.company_id, key);
+  if (['trialing', 'active', 'canceling'].includes(state)) {
+    if (key === 'employee_email' || key === 'employee_closer' || key === 'employee_whatsapp') {
+      await activateEmployeeForPlan(admin, current.company_id, key);
+    }
+    if (departmentForPlan(key)) {
+      await activateDepartmentForPlan(admin, current.company_id, current.id, key);
+    }
   }
 }
 
@@ -204,6 +209,62 @@ const employeeByPlan = {
     connectedTools: ['messaging', 'voice', 'email', 'calendar'],
   },
 } as const;
+
+const departmentProfiles: Record<string, { employeeType: string; name: string; description: string; providerKey: string | null; connectedTools: string[] }> = {
+  receptionist: { employeeType: 'receptionist', name: 'Recepcionista IA', description: 'Atiende llamadas y organiza las primeras conversaciones.', providerKey: 'retell', connectedTools: ['voice', 'calendar'] },
+  whatsapp: { employeeType: 'whatsapp', name: 'WhatsApp IA', description: 'Atiende mensajes y abre oportunidades para tu empresa.', providerKey: 'whatsapp_meta', connectedTools: ['messaging', 'email', 'calendar'] },
+  closer: { employeeType: 'closer', name: 'Closer IA', description: 'Hace seguimiento de oportunidades y convierte interés en ventas.', providerKey: 'retell', connectedTools: ['voice', 'email', 'calendar'] },
+  booking: { employeeType: 'booking', name: 'Booking IA', description: 'Organiza citas, cambios y recordatorios con el mismo historial de cliente.', providerKey: 'google_calendar', connectedTools: ['calendar'] },
+  budget_specialist: { employeeType: 'budget_specialist', name: 'Especialista Presupuestos IA', description: 'Prepara presupuestos y coordina el seguimiento comercial.', providerKey: null, connectedTools: ['email', 'calendar'] },
+};
+
+async function activateDepartmentForPlan(admin: Admin, companyId: string, subscriptionId: string, planKey: string) {
+  const department = departmentForPlan(planKey);
+  if (!department) return;
+  const profiles = department.employeeTypes
+    .map((employeeType) => departmentProfiles[employeeType])
+    .filter((profile): profile is { employeeType: string; name: string; description: string; providerKey: string | null; connectedTools: string[] } => Boolean(profile));
+  for (const profile of profiles) {
+    const existing = await admin.from('employees').select('id').eq('company_id', companyId).eq('employee_type', profile.employeeType).maybeSingle();
+    if (existing.error) throw existing.error;
+    if (existing.data) continue;
+    const created = await admin.from('employees').insert({
+      company_id: companyId,
+      employee_type: profile.employeeType,
+      name: profile.name,
+      description: profile.description,
+      status: 'active',
+      runtime_status: profile.providerKey ? 'configuring' : 'training',
+      provider_key: profile.providerKey,
+      connected_tools: profile.connectedTools,
+      instructions: { role: profile.employeeType, brain: 'shared' },
+    }).select('id').single();
+    if (created.error) throw created.error;
+    await publishEvent({
+      companyId,
+      employeeId: created.data.id,
+      name: 'EmployeeActivated',
+      source: 'department',
+      idempotencyKey: `brain:department:${department.key}:${created.data.id}`,
+      payload: { department_key: department.key, employee_type: profile.employeeType },
+    });
+  }
+  const { error } = await (admin as any).from('company_departments').upsert({
+    company_id: companyId,
+    department_key: department.key,
+    subscription_id: subscriptionId,
+    status: 'active',
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'company_id,department_key' });
+  if (error) throw error;
+  await recordBusinessEvent({
+    eventName: 'department_activated',
+    companyId,
+    source: 'billing',
+    idempotencyKey: `department-activated:${companyId}:${department.key}`,
+    metadata: { department_key: department.key, plan_key: planKey },
+  }).catch(() => undefined);
+}
 
 async function activateEmployeeForPlan(
   admin: Admin,
@@ -310,6 +371,9 @@ export async function processStripeEvent(event: StripeEvent) {
       if (result.error) throw result.error;
       if (key === 'employee_email' || key === 'employee_closer' || key === 'employee_whatsapp') {
         await activateEmployeeForPlan(admin, resolvedCompanyId, key);
+      }
+      if (key && departmentForPlan(key)) {
+        await activateDepartmentForPlan(admin, resolvedCompanyId, current.id, key);
       }
     }
   } else if (event.type.startsWith('customer.subscription.')) {
