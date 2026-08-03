@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     await recordBusinessEvent({
       eventName: 'email_confirmed', userId: auth.user.id, source: 'auth.callback',
       idempotencyKey: `email-confirmed:${auth.user.id}:${auth.user.email_confirmed_at}`,
-    }).catch(() => undefined);
+    });
   }
   return NextResponse.redirect(new URL(next, url.origin));
 }
