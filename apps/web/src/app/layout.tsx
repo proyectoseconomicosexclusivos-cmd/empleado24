@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
-import { HelpCenter } from '@/components/help-center';
 import { BusinessAnalyticsTracker } from '@/components/business-analytics-tracker';
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist' });
@@ -29,5 +28,5 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       ]},
     ],
   };
-  return <html lang="es" suppressHydrationWarning className={`${geist.variable} ${mono.variable}`}><body>{children}<BusinessAnalyticsTracker /><HelpCenter /><script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(schema)}}/></body></html>;
+  return <html lang="es" suppressHydrationWarning className={`${geist.variable} ${mono.variable}`}><body>{children}<BusinessAnalyticsTracker /><script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(schema)}}/></body></html>;
 }
