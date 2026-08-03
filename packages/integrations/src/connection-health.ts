@@ -29,7 +29,10 @@ interface Probe {
 async function zadarmaSignature(secret: string, path: string) {
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
   const digest = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${path}d41d8cd98f00b204e9800998ecf8427e`));
-  return btoa(String.fromCharCode(...new Uint8Array(digest)));
+  // Zadarma's documented PHP example base64-encodes the hexadecimal HMAC
+  // string, rather than the raw HMAC bytes.
+  const hexadecimalDigest = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+  return btoa(hexadecimalDigest);
 }
 
 const required = (credentials: IntegrationCredentials, key: string): string => {
