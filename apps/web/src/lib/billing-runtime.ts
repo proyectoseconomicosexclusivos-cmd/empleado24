@@ -163,7 +163,7 @@ async function syncSubscription(admin: Admin, object: Record<string, unknown>, c
     if (key === 'employee_email' || key === 'employee_closer' || key === 'employee_whatsapp') {
       await activateEmployeeForPlan(admin, current.company_id, key);
     }
-    if (departmentForPlan(key)) {
+    if (key && departmentForPlan(key)) {
       await activateDepartmentForPlan(admin, current.company_id, current.id, key);
     }
   }
