@@ -19,6 +19,13 @@ function statusFor(error: string) {
   return 409;
 }
 
+function readableErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string')
+    return error.message;
+  return 'retell_agent_sync_failed';
+}
+
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
   const authorized = await authorizedRetellContext(id);
@@ -140,6 +147,22 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const zadarmaNumber = typeof zadarmaConfig.from_number === 'string' ? zadarmaConfig.from_number.trim() : '';
     const fromNumber = configuredFromNumber || current?.external_phone_number || zadarmaNumber;
     if (!/^\+[1-9]\d{7,14}$/.test(fromNumber)) return NextResponse.json({ error: 'zadarma_phone_number_required', message: 'Configura un número Zadarma válido en formato internacional.' }, { status: 409 });
+    const { data: phoneOwner, error: phoneOwnerError } = await admin
+      .from('employee_provider_resources')
+      .select('id')
+      .eq('provider_key', 'retell')
+      .eq('external_phone_number', fromNumber)
+      .neq('employee_id', employee.id)
+      .maybeSingle();
+    if (phoneOwnerError) throw phoneOwnerError;
+    if (phoneOwner)
+      return NextResponse.json(
+        {
+          error: 'phone_already_connected',
+          message: 'Este número ya está conectado a otra empresa. Usa un número distinto para esta empresa.',
+        },
+        { status: 409 },
+      );
     const hash = configurationHash({
       prompt,
       voiceId,
@@ -242,7 +265,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     });
     return NextResponse.json({ status: 'ready', resource: stored });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'retell_agent_sync_failed';
+    const message = readableErrorMessage(error);
     try {
       await recordOperation({
         companyId: employee.company_id,
