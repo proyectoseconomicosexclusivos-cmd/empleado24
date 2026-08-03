@@ -5,6 +5,7 @@ import { headers } from 'next/headers';
 import { AuthService } from '@/services/auth-service';
 import { SignOutButton } from '@/components/sign-out-button';
 import { createClient } from '@/lib/supabase/server';
+import { HelpCenter } from '@/components/help-center';
 
 const baseNavigation = [
   { href: '/app', label: 'Mi oficina', icon: Home },
@@ -20,14 +21,15 @@ export default async function PrivateLayout({ children }: { children: React.Reac
   const user = await AuthService.currentUser();
   if (!user) redirect('/login');
   const supabase = await createClient();
+  const departmentClient = supabase as any;
   const { data: membership } = await supabase.from('members').select('company_id').eq('user_id', user.id).limit(1).maybeSingle();
   if (!membership) redirect('/onboarding');
   const { data: settings } = await supabase.from('settings').select('data').eq('company_id', membership.company_id).maybeSingle();
-  const { data: employees } = await supabase
-    .from('employees')
-    .select('employee_type')
-    .eq('company_id', membership.company_id)
-    .in('employee_type', ['email_specialist', 'closer', 'whatsapp']);
+  const [{ data: employees }, { data: integrations }, { data: companyDepartments }] = await Promise.all([
+    supabase.from('employees').select('employee_type').eq('company_id', membership.company_id),
+    supabase.from('company_integrations').select('provider_key,status,enabled').eq('company_id', membership.company_id),
+    departmentClient.from('company_departments').select('id').eq('company_id', membership.company_id).eq('status', 'active').limit(1),
+  ]);
   const employeeTypes = new Set((employees ?? []).map((employee) => employee.employee_type));
   const navigation = [
     ...baseNavigation.slice(0, 2),
@@ -80,6 +82,12 @@ export default async function PrivateLayout({ children }: { children: React.Reac
         </div>
       </aside>
       <section className="min-w-0">{children}</section>
+      <HelpCenter context={{
+        hasPhone: (integrations ?? []).some((item) => item.provider_key === 'zadarma' && item.enabled && item.status === 'connected'),
+        hasCalendar: (integrations ?? []).some((item) => item.provider_key === 'google_calendar' && item.enabled && item.status === 'connected'),
+        employeeTypes: [...employeeTypes],
+        hasDepartment: (companyDepartments ?? []).length > 0,
+      }} />
     </div>
   );
 }
