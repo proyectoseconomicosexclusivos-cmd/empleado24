@@ -19,6 +19,7 @@
   "devDependencies": {
     "@empleado24/eslint-config": "workspace:*",
     "@empleado24/typescript-config": "workspace:*",
+    "brace-expansion": "1.1.18",
     "eslint": "^9.22.0",
     "next": "^15.5.7",
     "prettier": "^3.5.3",
