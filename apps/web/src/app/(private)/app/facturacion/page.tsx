@@ -1,4 +1,4 @@
-import { Check, CreditCard, FileText, Headphones, Mail, Megaphone, MessageCircle, ShieldCheck, TrendingUp, Users } from 'lucide-react';
+import { BriefcaseBusiness, Calculator, Check, CreditCard, FileText, Headphones, Mail, Megaphone, MessageCircle, ShieldCheck, TrendingUp, Users } from 'lucide-react';
 import { CompanyService } from '@/services/company-service';
 import { createClient } from '@/lib/supabase/server';
 import { BillingActionButton } from '@/components/billing-action-button';
@@ -25,6 +25,12 @@ const employeePresentation = {
     icon: Mail,
     benefits: ['Cuenta de envío propia', 'Datos separados por empresa', '3 días para probarlo'],
   },
+  employee_budget: {
+    name: 'Especialista Presupuestos IA',
+    description: 'Prepara presupuestos claros y rentables, y coordina el seguimiento con tu equipo.',
+    icon: Calculator,
+    benefits: ['Márgenes y costes controlados', 'Historial por cliente', '3 días para probarlo'],
+  },
   employee_closer: {
     name: 'Closer IA',
     description: 'Nunca vuelvas a perder una venta. Sigue oportunidades, prepara contactos y agenda reuniones.',
@@ -33,9 +39,9 @@ const employeePresentation = {
   },
   employee_whatsapp: {
     name: 'WhatsApp IA',
-    description: 'Atiende mensajes, responde dudas y convierte conversaciones en oportunidades para tu empresa.',
+    description: 'Atiende clientes por WhatsApp, detecta oportunidades y avisa a tu equipo cuando hace falta.',
     icon: MessageCircle,
-    benefits: ['Atención 24 horas', 'Oportunidades y citas', '3 días para probarlo'],
+    benefits: ['Atiende 24 horas', 'Responde automáticamente', 'Detecta oportunidades', 'Prepara citas y presupuestos', 'Pasa clientes al Closer', '3 días para probarlo'],
   },
 } as const;
 
@@ -62,7 +68,6 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   const availablePlans = (plans ?? []) as BillingPlan[];
   type BillingInvoice = { id: string; amount_paid_cents: number | null; amount_due_cents: number; currency: string; status: string; created_at: string; invoice_url: string | null };
   const availableInvoices = (invoices ?? []) as BillingInvoice[];
-  const commercialPlan = availablePlans.find((plan) => plan.plan_key === departments.commercial.planKey);
 
   return <main className="mx-auto max-w-6xl px-5 py-10 md:px-10 md:py-14">
     <header className="max-w-3xl"><p className="eyebrow">Mis empleados</p><h1 className="mt-3 text-4xl font-semibold tracking-[-.06em] md:text-5xl">Elige quién quieres incorporar.</h1><p className="mt-4 leading-7 text-[var(--muted)]">Cada empleado tiene una forma de ayudarte. Puedes incorporarlo, cambiarlo o ver sus documentos cuando lo necesites.</p></header>
@@ -75,16 +80,20 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       {subscription?.provider_customer_id && <BillingActionButton action="portal" className="mt-6 rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#111315] transition hover:-translate-y-0.5 dark:bg-[#111315] dark:text-white md:mt-0">Gestionar contratación y facturas</BillingActionButton>}
     </section>
 
-    <section className="mt-14"><p className="eyebrow">Departamentos IA</p><h2 className="mt-2 text-2xl font-semibold tracking-[-.04em]">Un equipo completo que comparte el mismo conocimiento.</h2><div className="mt-7 grid gap-4 lg:grid-cols-3">
-      {commercialPlan && <article className="surface rounded-3xl p-6 md:p-7 lg:col-span-2"><div className="flex items-start justify-between gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#efffcf] text-[#526a00] dark:bg-[#263300] dark:text-[#d7f897]"><Users size={20}/></span><span className="rounded-full bg-black/5 px-3 py-1 text-xs text-[var(--muted)] dark:bg-white/5">Disponible</span></div><h3 className="mt-7 text-2xl font-semibold tracking-[-.04em]">{departments.commercial.name}</h3><p className="mt-3 text-sm leading-6 text-[var(--muted)]">{departments.commercial.description}</p><p className="mt-4 text-sm font-medium">{departments.commercial.flow}</p><div className="mt-5 flex flex-wrap gap-2">{departments.commercial.members.map((member) => <span key={member} className="rounded-full bg-black/5 px-3 py-1 text-xs text-[var(--muted)] dark:bg-white/5">{member}</span>)}</div><p className="mt-6 text-4xl font-semibold tracking-[-.06em]">{money(commercialPlan.monthly_price_cents, commercialPlan.currency)}<span className="ml-1 text-sm font-normal tracking-normal text-[var(--muted)]">/mes</span></p><div className="mt-7">{hasProviderSubscription ? <BillingActionButton action="portal" className="w-full rounded-full bg-[#111315] px-4 py-3 text-sm font-semibold text-white dark:bg-[#f4f5f0] dark:text-[#111315]">Gestionar mi equipo</BillingActionButton> : <BillingActionButton action="checkout" planKey={commercialPlan.plan_key} className="w-full rounded-full bg-[#111315] px-4 py-3 text-sm font-semibold text-white dark:bg-[#f4f5f0] dark:text-[#111315]">Incorporar Departamento Comercial</BillingActionButton>}</div></article>}
-      {[departments.marketing, departments.company].map((department) => <article key={department.key} className="rounded-3xl border border-dashed border-[var(--line)] p-6"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-black/5 text-[var(--muted)] dark:bg-white/5"><Users size={18}/></span><h3 className="mt-7 text-lg font-semibold">{department.name}</h3><p className="mt-2 text-sm leading-6 text-[var(--muted)]">{department.description}</p><span className="mt-5 inline-block text-xs font-semibold uppercase tracking-[.12em] text-[#789500]">Próximamente</span></article>)}
+    <section className="mt-14"><p className="eyebrow">Departamentos IA</p><h2 className="mt-2 text-2xl font-semibold tracking-[-.04em]">Un equipo completo, una única incorporación.</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--muted)]">Todos comparten el historial de tus clientes y se pasan el trabajo sin que tengas que repetir información.</p><div className="mt-7 grid gap-4 lg:grid-cols-3">
+      {Object.values(departments).map((department) => {
+        const plan = 'planKey' in department ? availablePlans.find((candidate) => candidate.plan_key === department.planKey) : null;
+        const commercial = department.key === 'commercial';
+        const comingSoon = 'comingSoon' in department && department.comingSoon;
+        return <article key={department.key} className={`surface rounded-3xl p-6 md:p-7 ${commercial ? 'ring-1 ring-[#789500]' : 'opacity-80'}`}><div className="flex items-start justify-between gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#efffcf] text-[#526a00] dark:bg-[#263300] dark:text-[#d7f897]"><BriefcaseBusiness size={20}/></span><span className="rounded-full bg-black/5 px-3 py-1 text-xs text-[var(--muted)] dark:bg-white/5">{comingSoon ? 'Próximamente' : 'Disponible'}</span></div><h3 className="mt-7 text-xl font-semibold tracking-[-.04em]">{department.name}</h3><p className="mt-3 min-h-12 text-sm leading-6 text-[var(--muted)]">{department.description}</p><ul className="mt-5 grid gap-2 text-sm">{department.members.map((member) => <li key={member} className="flex items-center gap-2"><Check size={15} className="text-[#789500]"/>{member}</li>)}</ul>{'flow' in department && <p className="mt-5 rounded-2xl bg-[#efffcf] p-3 text-xs font-medium leading-5 text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]">{department.flow}</p>}{plan && <p className="mt-6 text-3xl font-semibold tracking-[-.05em]">{money(plan.monthly_price_cents, plan.currency)}<span className="ml-1 text-sm font-normal tracking-normal text-[var(--muted)]">/mes</span></p>}{!comingSoon && plan && <div className="mt-7">{hasProviderSubscription ? <BillingActionButton action="portal" className="w-full rounded-full bg-[#111315] px-4 py-3 text-sm font-semibold text-white dark:bg-[#f4f5f0] dark:text-[#111315]">Gestionar mi equipo</BillingActionButton> : <BillingActionButton action="checkout" planKey={plan.plan_key} className="w-full rounded-full bg-[#111315] px-4 py-3 text-sm font-semibold text-white dark:bg-[#f4f5f0] dark:text-[#111315]">Incorporar departamento</BillingActionButton>}</div>}</article>;
+      })}
     </div></section>
 
-    <section className="mt-14"><p className="eyebrow">Empleados disponibles</p><h2 className="mt-2 text-2xl font-semibold tracking-[-.04em]">¿A quién quieres incorporar?</h2><div className="mt-7 grid gap-4 lg:grid-cols-2">
+    <section className="mt-14"><p className="eyebrow">Empleados IA</p><h2 className="mt-2 text-2xl font-semibold tracking-[-.04em]">¿A quién quieres incorporar?</h2><div className="mt-7 grid gap-4 lg:grid-cols-2">
       {availablePlans.filter((plan) => plan.self_serve_enabled && plan.plan_key in employeePresentation).map((plan) => {
         const presentation = employeePresentation[plan.plan_key as keyof typeof employeePresentation];
         const EmployeeIcon = presentation.icon;
-        return <article key={plan.id} className={`surface rounded-3xl p-6 md:p-7 ${currentPlan?.id === plan.id ? 'ring-2 ring-[#789500]' : ''}`}><div className="flex items-start justify-between gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#efffcf] text-[#526a00] dark:bg-[#263300] dark:text-[#d7f897]"><EmployeeIcon size={20}/></span>{currentPlan?.id === plan.id ? <span className="rounded-full bg-[#e9ffcf] px-3 py-1 text-xs font-medium text-[#486500]">En tu equipo</span> : <span className="rounded-full bg-black/5 px-3 py-1 text-xs text-[var(--muted)] dark:bg-white/5">Disponible</span>}</div><h3 className="mt-8 text-2xl font-semibold tracking-[-.04em]">{presentation.name}</h3><p className="mt-3 min-h-14 text-sm leading-6 text-[var(--muted)]">{presentation.description}</p><p className="mt-6 text-4xl font-semibold tracking-[-.06em]">{money(plan.monthly_price_cents, plan.currency)}<span className="ml-1 text-sm font-normal tracking-normal text-[var(--muted)]">/mes</span></p><ul className="mt-6 grid gap-3 text-sm">{presentation.benefits.map((benefit) => <li key={benefit} className="flex gap-2"><Check size={16} className="text-[#789500]"/>{benefit}</li>)}</ul><div className="mt-7">{hasProviderSubscription ? <BillingActionButton action="portal" className="w-full rounded-full bg-[#111315] px-4 py-3 text-sm font-semibold text-white dark:bg-[#f4f5f0] dark:text-[#111315]">{currentPlan?.id === plan.id ? 'Gestionar contratación' : `Cambiar a ${presentation.name}`}</BillingActionButton> : <BillingActionButton action="checkout" planKey={plan.plan_key} className="w-full rounded-full bg-[#111315] px-4 py-3 text-sm font-semibold text-white dark:bg-[#f4f5f0] dark:text-[#111315]">Contratar {presentation.name}</BillingActionButton>}</div></article>;
+        return <article key={plan.id} className={`surface rounded-3xl p-6 md:p-7 ${currentPlan?.id === plan.id ? 'ring-2 ring-[#789500]' : ''}`}><div className="flex items-start justify-between gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#efffcf] text-[#526a00] dark:bg-[#263300] dark:text-[#d7f897]"><EmployeeIcon size={20}/></span>{currentPlan?.id === plan.id ? <span className="rounded-full bg-[#e9ffcf] px-3 py-1 text-xs font-medium text-[#486500]">En tu equipo</span> : <span className="rounded-full bg-black/5 px-3 py-1 text-xs text-[var(--muted)] dark:bg-white/5">Disponible</span>}</div><h3 className="mt-8 text-2xl font-semibold tracking-[-.04em]">{presentation.name}</h3><p className="mt-3 min-h-14 text-sm leading-6 text-[var(--muted)]">{presentation.description}</p><p className="mt-3 text-xs font-medium text-[#789500]">Compatible con Empleado24 Brain</p><p className="mt-6 text-4xl font-semibold tracking-[-.06em]">{money(plan.monthly_price_cents, plan.currency)}<span className="ml-1 text-sm font-normal tracking-normal text-[var(--muted)]">/mes</span></p><ul className="mt-6 grid gap-3 text-sm">{presentation.benefits.map((benefit) => <li key={benefit} className="flex gap-2"><Check size={16} className="text-[#789500]"/>{benefit}</li>)}</ul><div className="mt-7">{hasProviderSubscription ? <BillingActionButton action="portal" className="w-full rounded-full bg-[#111315] px-4 py-3 text-sm font-semibold text-white dark:bg-[#f4f5f0] dark:text-[#111315]">{currentPlan?.id === plan.id ? 'Gestionar contratación' : `Cambiar a ${presentation.name}`}</BillingActionButton> : <BillingActionButton action="checkout" planKey={plan.plan_key} className="w-full rounded-full bg-[#111315] px-4 py-3 text-sm font-semibold text-white dark:bg-[#f4f5f0] dark:text-[#111315]">Contratar {presentation.name}</BillingActionButton>}</div></article>;
       })}
     </div></section>
 
