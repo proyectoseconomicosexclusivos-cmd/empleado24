@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Bell, Clock3, CreditCard, Headphones, Home, Mail, MessageCircle, PlugZap, Settings, Sparkles, TrendingUp } from 'lucide-react';
+import { Bell, Calculator, Clock3, CreditCard, Headphones, Home, Mail, MessageCircle, PlugZap, Settings, Sparkles, TrendingUp } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { AuthService } from '@/services/auth-service';
@@ -26,7 +26,10 @@ export default async function PrivateLayout({ children }: { children: React.Reac
   if (!membership) redirect('/onboarding');
   const { data: settings } = await supabase.from('settings').select('data').eq('company_id', membership.company_id).maybeSingle();
   const [{ data: employees }, { data: integrations }, { data: companyDepartments }] = await Promise.all([
-    supabase.from('employees').select('employee_type').eq('company_id', membership.company_id),
+    supabase
+    .from('employees')
+    .select('employee_type')
+    .eq('company_id', membership.company_id),
     supabase.from('company_integrations').select('provider_key,status,enabled').eq('company_id', membership.company_id),
     departmentClient.from('company_departments').select('id').eq('company_id', membership.company_id).eq('status', 'active').limit(1),
   ]);
@@ -34,6 +37,7 @@ export default async function PrivateLayout({ children }: { children: React.Reac
   const navigation = [
     ...baseNavigation.slice(0, 2),
     ...(employeeTypes.has('email_specialist') ? [{ href: '/app/especialista-email', label: 'Especialista Email', icon: Mail }] : []),
+    ...(employeeTypes.has('budget_specialist') ? [{ href: '/app/presupuestos', label: 'Presupuestos IA', icon: Calculator }] : []),
     ...(employeeTypes.has('closer') ? [{ href: '/app/centro-ventas', label: 'Centro de Ventas', icon: TrendingUp }] : []),
     ...(employeeTypes.has('whatsapp') ? [{ href: '/app/whatsapp', label: 'WhatsApp IA', icon: MessageCircle }] : []),
     ...baseNavigation.slice(2),
