@@ -2,296 +2,48 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import type { LucideIcon } from 'lucide-react';
-import {
-  ArrowRight,
-  CalendarCheck,
-  Check,
-  Clock3,
-  Headphones,
-  Mail,
-  MessageCircle,
-  Phone,
-  Scale,
-  ShieldCheck,
-  Sparkles,
-  TrendingUp,
-  UserRoundCheck,
-  Users,
-} from 'lucide-react';
+import { ArrowRight, Check, Clock3, ShieldCheck, Sparkles, Star, Users } from 'lucide-react';
+import { EmployeeAvatar } from '@/components/employee-avatar';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { buttonVariants } from '@/components/ui/button';
+import { employeeShowcase, hiringHref } from '@/lib/employee-showcase';
+import { AutopilotShowcase } from '@/components/autopilot-showcase';
+import { MissionsShowcase } from '@/components/missions-showcase';
 
-const reveal = {
-  initial: { opacity: 0, y: 16 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, amount: 0.12 },
-  transition: { duration: 0.45 },
-};
-
-type EmployeeCard = {
-  name: string;
-  role: string;
-  description: string;
-  benefits: string[];
-  price: string;
-  icon: LucideIcon;
-  href?: string;
-  available: boolean;
-};
-
-const employees: EmployeeCard[] = [
-  {
-    name: 'Recepcionista IA',
-    role: 'Atiende tus llamadas y organiza tus citas',
-    description: 'Recibe a tus clientes, responde sus preguntas y te deja solo aquello que requiere tu atención.',
-    benefits: ['Disponible todos los días', 'Habla como tu empresa', 'Lista en menos de 5 minutos'],
-    price: '97 €/mes',
-    icon: Headphones,
-    href: '/register',
-    available: true,
-  },
-  {
-    name: 'Especialista Email IA',
-    role: 'Mantiene el contacto con tus clientes',
-    description: 'Prepara tus comunicaciones, organiza contactos y trabaja desde la cuenta de envío de tu empresa.',
-    benefits: ['Contactos separados por empresa', 'Mensajes y campañas organizados', 'Cuenta de envío propia'],
-    price: '97 €/mes',
-    icon: Mail,
-    href: '/register',
-    available: true,
-  },
-  {
-    name: 'Closer IA',
-    role: 'Da seguimiento a oportunidades',
-    description: 'Mantiene conversaciones comerciales y ayuda a convertir el interés en una decisión.',
-    benefits: ['Seguimiento constante', 'Prioriza oportunidades', 'Acompaña cada venta'],
-    price: '197 €/mes',
-    icon: TrendingUp,
-    href: '/register',
-    available: true,
-  },
-  {
-    name: 'Redes Sociales IA',
-    role: 'Cuida la presencia de tu empresa',
-    description: 'Ayuda a mantener una comunicación constante con tu comunidad y tus futuros clientes.',
-    benefits: ['Calendario organizado', 'Tono de tu empresa', 'Presencia constante'],
-    price: 'Próximamente',
-    icon: MessageCircle,
-    available: false,
-  },
-  {
-    name: 'Atención al Cliente IA',
-    role: 'Resuelve dudas y acompaña a tus clientes',
-    description: 'Atiende consultas frecuentes y sabe cuándo pedir ayuda a una persona de tu equipo.',
-    benefits: ['Respuestas rápidas', 'Atención consistente', 'Escalado cuando hace falta'],
-    price: 'Próximamente',
-    icon: UserRoundCheck,
-    available: false,
-  },
-  {
-    name: 'Secretaria IA',
-    role: 'Ordena agenda y tareas',
-    description: 'Mantiene citas, recordatorios y asuntos importantes bajo control durante toda la jornada.',
-    benefits: ['Agenda al día', 'Recordatorios claros', 'Menos tareas pendientes'],
-    price: 'Próximamente',
-    icon: CalendarCheck,
-    available: false,
-  },
-  {
-    name: 'Administrativo IA',
-    role: 'Mantiene el trabajo diario organizado',
-    description: 'Ayuda con el seguimiento de documentos, solicitudes y tareas repetitivas de tu empresa.',
-    benefits: ['Más orden', 'Seguimiento continuo', 'Menos trabajo repetitivo'],
-    price: 'Próximamente',
-    icon: Users,
-    available: false,
-  },
-];
-
-const comparison = [
-  ['Disponibilidad', 'Depende del horario', '24 horas al día'],
-  ['Coste', 'Salario y costes laborales', 'Desde 97 €/mes'],
-  ['Vacaciones', 'Necesita sustitución', 'Sigue trabajando'],
-  ['Incorporación', 'Semanas de selección y formación', 'Menos de 5 minutos'],
-  ['Crecimiento', 'Nueva contratación', 'Añade otro empleado'],
-];
+const reveal = { initial: { opacity: 0, y: 16 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, amount: 0.1 }, transition: { duration: 0.45 } };
 
 function Section({ id, children, className = '' }: { id?: string; children: React.ReactNode; className?: string }) {
   return <section id={id} className={`mx-auto max-w-7xl px-5 py-20 sm:px-6 md:px-10 md:py-28 ${className}`}>{children}</section>;
 }
 
 export default function Home() {
-  return (
-    <main>
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-[var(--line)] bg-[color:var(--bg)]/88 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-6 md:px-10">
-          <Link className="text-lg font-bold tracking-[-.07em]" href="#inicio">EMPLEADO<span className="text-[#789500]">24</span></Link>
-          <nav aria-label="Principal" className="hidden gap-7 text-sm text-[var(--muted)] md:flex">
-            <Link href="#empleados">Empleados</Link>
-            <Link href="#como-funciona">Cómo funciona</Link>
-            <Link href="#comparativa">Por qué Empleado24</Link>
-          </nav>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Link href="/register" className={buttonVariants({ variant: 'lime' })}>Contratar <ArrowRight size={15} aria-hidden="true" /></Link>
-          </div>
-        </div>
-      </header>
+  return <main>
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-[var(--line)] bg-[color:var(--bg)]/88 backdrop-blur-xl"><div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-6 md:px-10"><Link className="text-lg font-bold tracking-[-.07em]" href="#inicio">EMPLEADO<span className="text-[#789500]">24</span></Link><nav className="hidden gap-7 text-sm text-[var(--muted)] md:flex"><Link href="#empleados">Empleados</Link><Link href="#empresa">Tu empresa</Link><Link href="#packs">Packs</Link><Link href="/demo">Ver demo</Link></nav><div className="flex items-center gap-2"><ThemeToggle/><Link href="#empleados" className={buttonVariants({ variant: 'lime' })}>Contratar <ArrowRight size={15}/></Link></div></div></header>
 
-      <section id="inicio" className="grid-bg relative overflow-hidden pt-16">
-        <div className="noise" />
-        <Section className="relative py-20 md:py-32">
-          <div className="grid items-center gap-12 lg:grid-cols-[1.08fr_.92fr] lg:gap-16">
-            <motion.div {...reveal}>
-              <span className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--card)] px-3 py-1.5 text-xs">
-                <i className="h-1.5 w-1.5 rounded-full bg-[#789500]" /> Tu primer empleado puede empezar hoy
-              </span>
-              <h1 className="mt-7 text-5xl font-semibold tracking-[-.075em] sm:text-6xl md:text-7xl">Contrata empleados con IA para tu empresa.</h1>
-              <p className="mt-7 max-w-2xl text-lg leading-8 text-[var(--muted)]">Trabajan 24 horas al día. No enferman. No tienen vacaciones. No necesitan formación. Desde solo <strong className="font-semibold text-[var(--fg)]">97 €/mes</strong>.</p>
-              <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                <Link href="/register" className={buttonVariants({ variant: 'lime' })}>Contratar mi primer empleado <ArrowRight size={16} /></Link>
-                <Link href="#empleados" className={buttonVariants({ variant: 'outline' })}>Ver empleados</Link>
-              </div>
-              <div className="mt-9 flex flex-wrap gap-x-6 gap-y-3 text-sm text-[var(--muted)]">
-                {['3 días para probarlo', 'Sin permanencia', 'Incorporación guiada'].map((item) => <span key={item} className="flex items-center gap-2"><Check size={15} className="text-[#789500]" />{item}</span>)}
-              </div>
-            </motion.div>
-            <TeamPreview />
-          </div>
-        </Section>
-      </section>
+    <section id="inicio" className="grid-bg relative overflow-hidden pt-16"><div className="noise"/><Section className="relative py-20 md:py-32"><div className="grid items-center gap-12 lg:grid-cols-[1.05fr_.95fr] lg:gap-16"><motion.div {...reveal}><span className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--card)] px-3 py-1.5 text-xs"><i className="h-1.5 w-1.5 rounded-full bg-[#789500]"/>Tu equipo puede crecer hoy</span><h1 className="mt-7 text-5xl font-semibold tracking-[-.075em] sm:text-6xl md:text-7xl">Contrata empleados con IA desde 97 €/mes.</h1><p className="mt-7 max-w-2xl text-lg leading-8 text-[var(--muted)]">Elige la función que necesitas y suma a tu empresa alguien preparado para atender, organizar y hacer seguimiento cada día.</p><div className="mt-9 flex flex-col gap-3 sm:flex-row"><Link href="#empleados" className={buttonVariants({ variant: 'lime' })}>Conocer al equipo <ArrowRight size={16}/></Link><Link href="#packs" className={buttonVariants({ variant: 'outline' })}>Ver packs de equipo</Link></div><div className="mt-9 flex flex-wrap gap-x-6 gap-y-3 text-sm text-[var(--muted)]">{['3 días para probarlo', 'Sin permanencia', 'Incorporación guiada'].map((item) => <span key={item} className="flex items-center gap-2"><Check size={15} className="text-[#789500]"/>{item}</span>)}</div></motion.div><HeroTeam/></div></Section></section>
 
-      <Section id="empleados">
-        <div className="max-w-3xl">
-          <p className="eyebrow">Empleados disponibles</p>
-          <h2 className="mt-4 text-4xl font-semibold tracking-[-.06em] md:text-6xl">Elige quién se incorpora hoy.</h2>
-          <p className="mt-5 text-lg leading-8 text-[var(--muted)]">No instalas una herramienta. Contratas a alguien que llega con una función clara y aprende cómo trabaja tu empresa.</p>
-        </div>
-        <div className="mt-12 grid gap-5 lg:grid-cols-2">
-          {employees.map((employee, index) => <Employee key={employee.name} employee={employee} featured={index < 2} />)}
-        </div>
-      </Section>
+    <Section id="empleados"><div className="max-w-3xl"><p className="eyebrow">Empleados IA</p><h2 className="mt-4 text-4xl font-semibold tracking-[-.06em] md:text-6xl">Incorpora exactamente a quien necesitas.</h2><p className="mt-5 text-lg leading-8 text-[var(--muted)]">Cada empleado tiene una función clara. Puedes contratarlo individualmente, conocer cómo trabaja y ampliar el equipo cuando lo necesites.</p></div><div className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-3">{employeeShowcase.map((employee) => <EmployeeCard key={employee.slug} employee={employee}/>)}</div></Section>
+    <section id="empresa" className="border-y border-[var(--line)] bg-black/[.018] dark:bg-white/[.018]"><Section><div className="max-w-3xl"><p className="eyebrow">Tu empresa con Empleado24</p><h2 className="mt-4 text-4xl font-semibold tracking-[-.06em] md:text-5xl">Un equipo que comparte el mismo contexto.</h2><p className="mt-4 leading-7 text-[var(--muted)]">Cada empleado conoce su responsabilidad y puede pasar el trabajo al siguiente miembro del equipo cuando hace falta.</p></div><OrgChart/></Section></section>
+    <AutopilotShowcase/>
+    <MissionsShowcase/>
 
-      <section className="border-y border-[var(--line)] bg-black/[.018] dark:bg-white/[.018]">
-        <Section id="como-funciona">
-          <p className="eyebrow">En menos de 5 minutos</p>
-          <h2 className="mt-4 max-w-3xl text-4xl font-semibold tracking-[-.06em] md:text-6xl">De elegirlo a verlo trabajar.</h2>
-          <div className="mt-12 grid gap-4 md:grid-cols-4">
-            {[
-              ['01', 'Crear tu cuenta', 'Dinos quién incorpora al nuevo miembro del equipo.'],
-              ['02', 'Elegir empleado', 'Elige la función que quieres cubrir primero.'],
-              ['03', 'Confirmar contratación', 'Revisa el precio y empieza tus 3 días de prueba.'],
-              ['04', 'Empieza a trabajar', 'Completa su bienvenida y comprueba el resultado.'],
-            ].map(([number, title, detail]) => (
-              <motion.article {...reveal} key={number} className="surface rounded-3xl p-6">
-                <span className="font-mono text-xs text-[#789500]">{number}</span>
-                <h3 className="mt-12 text-xl font-semibold">{title}</h3>
-                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{detail}</p>
-              </motion.article>
-            ))}
-          </div>
-        </Section>
-      </section>
+    <section className="border-y border-[var(--line)] bg-black/[.018] dark:bg-white/[.018]"><Section id="packs"><div className="max-w-3xl"><p className="eyebrow">Packs IA</p><h2 className="mt-4 text-4xl font-semibold tracking-[-.06em] md:text-5xl">Cuando el trabajo necesita un equipo.</h2><p className="mt-4 leading-7 text-[var(--muted)]">Los packs agrupan funciones que se pasan el contexto entre sí. Están separados de los empleados individuales para que elijas el ritmo de crecimiento de tu empresa.</p></div><div className="mt-8 rounded-3xl border border-[#cfe69a] bg-[#f8ffe9] p-5 text-sm dark:border-[#405422] dark:bg-[#202900]"><p className="font-semibold">Pack Comercial: contratar por separado cuesta <s>391 €/mes</s>; el departamento comercial actual cuesta 297 €/mes.</p><p className="mt-1 text-[var(--muted)]">Incluye Recepcionista, WhatsApp y Closer, con una diferencia de 94 €/mes frente a esas tres incorporaciones individuales.</p></div><div className="mt-10 grid gap-5 lg:grid-cols-3"><Pack name="Pack Comercial" price="297 €/mes" status="Disponible" members={['Recepcionista IA', 'Closer IA', 'WhatsApp IA']} description="Atiende, organiza oportunidades y acompaña cada venta." href="/register?employee=department_commercial&from=pack-comercial"/><Pack name="Pack Marketing" price="Próximamente" status="Próximamente" members={['Especialista Email IA', 'Contenido y campañas', 'Seguimiento comercial']} description="Una base preparada para mantener el contacto y generar demanda."/><Pack name="Empresa Completa" price="Próximamente" status="Próximamente" members={['Comercial', 'Marketing', 'Atención al cliente']} description="El conjunto de empleados para coordinar varias áreas del negocio."/></div></Section></section>
 
-      <Section id="comparativa">
-        <div className="grid gap-12 lg:grid-cols-[.78fr_1.22fr] lg:items-start">
-          <div>
-            <p className="eyebrow">Una contratación diferente</p>
-            <h2 className="mt-4 text-4xl font-semibold tracking-[-.06em] md:text-5xl">Más capacidad sin ampliar la plantilla tradicional.</h2>
-            <p className="mt-5 leading-7 text-[var(--muted)]">Incorpora ayuda para el trabajo repetitivo y deja a tu equipo humano las decisiones, las relaciones y los casos que de verdad lo necesitan.</p>
-          </div>
-          <div className="overflow-hidden rounded-3xl border border-[var(--line)] bg-[var(--card)]">
-            <div className="grid grid-cols-[1fr_.9fr_.9fr] border-b border-[var(--line)] bg-[#111315] px-4 py-4 text-xs font-semibold text-white sm:px-6">
-              <span>Comparativa</span><span>Tradicional</span><span className="text-[#ccff00]">Empleado IA</span>
-            </div>
-            {comparison.map(([label, traditional, ai]) => (
-              <div key={label} className="grid grid-cols-[1fr_.9fr_.9fr] gap-2 border-b border-[var(--line)] px-4 py-5 text-xs last:border-b-0 sm:px-6 sm:text-sm">
-                <strong className="font-medium">{label}</strong><span className="text-[var(--muted)]">{traditional}</span><span>{ai}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </Section>
+    <Section id="comparativa"><div className="grid gap-12 lg:grid-cols-[.78fr_1.22fr] lg:items-start"><div><p className="eyebrow">Más capacidad</p><h2 className="mt-4 text-4xl font-semibold tracking-[-.06em] md:text-5xl">Un empleado que se incorpora a tu ritmo.</h2><p className="mt-5 leading-7 text-[var(--muted)]">Tu equipo humano conserva las decisiones y las relaciones importantes. Empleado24 se ocupa de las tareas repetitivas, los seguimientos y la disponibilidad constante.</p></div><div className="overflow-hidden rounded-3xl border border-[var(--line)] bg-[var(--card)]"><div className="grid grid-cols-[1fr_.9fr_.9fr] border-b border-[var(--line)] bg-[#111315] px-4 py-4 text-xs font-semibold text-white sm:px-6"><span>Comparativa</span><span>Empleado humano</span><span className="text-[#ccff00]">Empleado IA</span></div>{[['Disponibilidad', 'Horario acordado', 'Todos los días'], ['Incorporación', 'Selección y formación', 'Bienvenida guiada'], ['Trabajo repetitivo', 'Tiempo limitado', 'Capacidad constante'], ['Ampliar equipo', 'Nueva contratación', 'Añade otro empleado']].map(([label, human, ai]) => <div key={label} className="grid grid-cols-[1fr_.9fr_.9fr] gap-2 border-b border-[var(--line)] px-4 py-5 text-xs last:border-b-0 sm:px-6 sm:text-sm"><strong className="font-medium">{label}</strong><span className="text-[var(--muted)]">{human}</span><span>{ai}</span></div>)}</div></div></Section>
 
-      <section className="bg-[#111315] text-white dark:bg-[#ccff00] dark:text-[#111315]">
-        <Section>
-          <div className="grid gap-10 lg:grid-cols-[1fr_auto] lg:items-center">
-            <div>
-              <p className="eyebrow text-white/55 dark:text-[#111315]/60">Oferta de lanzamiento</p>
-              <h2 className="mt-4 max-w-3xl text-4xl font-semibold tracking-[-.06em] md:text-6xl">Prueba a tu primer empleado durante 3 días.</h2>
-              <p className="mt-5 max-w-2xl leading-7 text-white/65 dark:text-[#111315]/65">Hoy pagas 0 €. Después, desde 97 €/mes. Verás la fecha del primer cobro antes de confirmar y podrás cancelar si no encaja.</p>
-            </div>
-            <Link href="/register" className="inline-flex w-fit items-center gap-2 rounded-full bg-[#ccff00] px-6 py-3 font-semibold text-[#111315] dark:bg-[#111315] dark:text-white">Empezar ahora <ArrowRight size={17} /></Link>
-          </div>
-        </Section>
-      </section>
+    <section className="border-y border-[var(--line)] bg-black/[.018] dark:bg-white/[.018]"><Section id="como-funciona"><p className="eyebrow">Incorporación clara</p><h2 className="mt-4 max-w-3xl text-4xl font-semibold tracking-[-.06em] md:text-6xl">Elige. Conecta. Empieza a trabajar.</h2><div className="mt-12 grid gap-4 md:grid-cols-4">{[['01', 'Elige un empleado', 'Conoce su función, precio y forma de trabajar.'], ['02', 'Crea tu empresa', 'Empezamos una incorporación corta y guiada.'], ['03', 'Conecta lo necesario', 'Teléfono, calendario o cuenta de envío cuando corresponda.'], ['04', 'Comprueba el resultado', 'Revisa la primera actividad desde tu espacio privado.']].map(([number, title, detail]) => <motion.article {...reveal} key={number} className="surface rounded-3xl p-6"><span className="font-mono text-xs text-[#789500]">{number}</span><h3 className="mt-12 text-xl font-semibold">{title}</h3><p className="mt-3 text-sm leading-6 text-[var(--muted)]">{detail}</p></motion.article>)}</div></Section></section>
 
-      <Section>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {[
-            [ShieldCheck, 'Tus datos siguen siendo tuyos', 'Cada empresa trabaja en su espacio privado.'],
-            [Clock3, 'Empieza hoy', 'La incorporación está guiada paso a paso.'],
-            [Scale, 'Control total', 'Consulta actividad, consumo y documentos cuando quieras.'],
-          ].map(([Icon, title, detail]) => {
-            const CardIcon = Icon as LucideIcon;
-            return <article key={String(title)} className="surface rounded-3xl p-6"><CardIcon className="text-[#789500]" size={21} /><h3 className="mt-10 text-lg font-semibold">{String(title)}</h3><p className="mt-2 text-sm leading-6 text-[var(--muted)]">{String(detail)}</p></article>;
-          })}
-        </div>
-      </Section>
-
-      <footer className="border-t border-[var(--line)]">
-        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-12 text-sm text-[var(--muted)] sm:px-6 md:flex-row md:items-end md:justify-between md:px-10">
-          <div><b className="text-lg text-[var(--fg)]">EMPLEADO<span className="text-[#789500]">24</span></b><p className="mt-3">Empleados con IA preparados para formar parte de tu empresa.</p></div>
-          <div className="flex flex-wrap gap-6"><Link href="/login">Entrar en mi empresa</Link><Link href="#empleados">Ver empleados</Link><Link href="/register">Contratar</Link></div>
-        </div>
-      </footer>
-    </main>
-  );
+    <section className="bg-[#111315] text-white dark:bg-[#ccff00] dark:text-[#111315]"><Section><div className="grid gap-10 lg:grid-cols-[1fr_auto] lg:items-center"><div><p className="eyebrow text-white/55 dark:text-[#111315]/60">Tu próximo miembro del equipo</p><h2 className="mt-4 max-w-3xl text-4xl font-semibold tracking-[-.06em] md:text-6xl">Empieza con la función que más tiempo te quita hoy.</h2><p className="mt-5 max-w-2xl leading-7 text-white/65 dark:text-[#111315]/65">Conoce a cada empleado antes de contratarlo. Cuando estés listo, empieza su incorporación guiada.</p></div><Link href="#empleados" className="inline-flex w-fit items-center gap-2 rounded-full bg-[#ccff00] px-6 py-3 font-semibold text-[#111315] dark:bg-[#111315] dark:text-white">Ver empleados <ArrowRight size={17}/></Link></div></Section></section>
+    <Section><div className="grid gap-4 sm:grid-cols-3">{[[ShieldCheck, 'Tu empresa, tu información', 'Cada empresa trabaja en un espacio privado.'], [Clock3, 'Incorporación guiada', 'Sabrás qué hacer en cada momento.'], [Users, 'Un equipo que puede crecer', 'Añade empleados individuales o un departamento.']].map(([Icon, title, text]) => { const ItemIcon = Icon as typeof ShieldCheck; return <article key={String(title)} className="surface rounded-3xl p-6"><ItemIcon className="text-[#789500]" size={21}/><h3 className="mt-10 text-lg font-semibold">{String(title)}</h3><p className="mt-2 text-sm leading-6 text-[var(--muted)]">{String(text)}</p></article>; })}</div></Section>
+    <footer className="border-t border-[var(--line)]"><div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-12 text-sm text-[var(--muted)] sm:px-6 md:flex-row md:items-end md:justify-between md:px-10"><div><b className="text-lg text-[var(--fg)]">EMPLEADO<span className="text-[#789500]">24</span></b><p className="mt-3">Empleados con IA preparados para formar parte de tu empresa.</p></div><div className="flex flex-wrap gap-6"><Link href="/login">Entrar en mi empresa</Link><Link href="#empleados">Ver empleados</Link><Link href="#packs">Ver packs</Link></div></div></footer>
+  </main>;
 }
 
-function Employee({ employee, featured }: { employee: EmployeeCard; featured: boolean }) {
-  const Icon = employee.icon;
-  return (
-    <motion.article {...reveal} className={`relative overflow-hidden rounded-[2rem] border p-6 sm:p-8 ${featured ? 'border-[#9abd00] bg-[#f9ffe9] dark:bg-[#202900]' : 'border-[var(--line)] bg-[var(--card)]'}`}>
-      <div className="flex items-start justify-between gap-4">
-        <span className="grid h-14 w-14 place-items-center rounded-2xl bg-[#111315] text-[#ccff00] dark:bg-[#f4f5f0] dark:text-[#526a00]"><Icon size={23} /></span>
-        <span className={`rounded-full px-3 py-1.5 text-xs font-medium ${employee.available ? 'bg-[#e9ffcf] text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]' : 'bg-black/5 text-[var(--muted)] dark:bg-white/5'}`}>{employee.available ? 'Disponible' : 'Próximamente'}</span>
-      </div>
-      <p className="eyebrow mt-10">{employee.role}</p>
-      <h3 className="mt-2 text-3xl font-semibold tracking-[-.05em]">{employee.name}</h3>
-      <p className="mt-4 max-w-xl leading-7 text-[var(--muted)]">{employee.description}</p>
-      <ul className="mt-6 grid gap-3 text-sm">{employee.benefits.map((benefit) => <li key={benefit} className="flex gap-2"><Check size={16} className="mt-0.5 shrink-0 text-[#789500]" />{benefit}</li>)}</ul>
-      <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--line)] pt-6">
-        <p className="text-2xl font-semibold tracking-[-.04em]">{employee.price}</p>
-        {employee.available && employee.href ? <Link href={employee.href} className={buttonVariants({ variant: 'default' })}>Contratar <ArrowRight size={15} /></Link> : <span className="text-sm font-medium text-[var(--muted)]">Te avisaremos cuando esté disponible</span>}
-      </div>
-    </motion.article>
-  );
-}
+function EmployeeCard({ employee }: { employee: (typeof employeeShowcase)[number] }) { return <motion.article {...reveal} className="surface flex flex-col rounded-[2rem] p-6"><div className="flex items-start justify-between gap-4"><EmployeeAvatar position={employee.avatarPosition} className="h-16 w-16"/><span className="rounded-full bg-[#e9ffcf] px-3 py-1.5 text-xs font-medium text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]">Disponible</span></div><div className="mt-6 flex items-center gap-1 text-[#789500]" aria-label="Valoración visual de cinco estrellas">{Array.from({ length: 5 }).map((_, index) => <Star key={index} size={14} fill="currentColor"/>)}</div><p className="eyebrow mt-6">{employee.role}</p><h3 className="mt-2 text-2xl font-semibold tracking-[-.05em]">{employee.name}</h3><p className="mt-3 min-h-20 text-sm leading-6 text-[var(--muted)]">{employee.summary}</p><ul className="mt-6 grid gap-2 text-sm">{employee.benefits.map((benefit) => <li className="flex gap-2" key={benefit}><Check size={16} className="mt-0.5 shrink-0 text-[#789500]"/>{benefit}</li>)}</ul><div className="mt-6 rounded-2xl bg-[#efffcf] px-4 py-3 text-xs font-medium text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]">Ahorro estimado de tiempo: {employee.timeSaved}</div><div className="mt-6 flex items-center justify-between gap-3 border-t border-[var(--line)] pt-5"><span className="text-xl font-semibold">{employee.price}</span><div className="flex gap-2"><Link href={`/empleados/${employee.slug}`} className="rounded-full border border-[var(--line)] px-3 py-2 text-sm font-semibold">Ver más</Link><Link href={hiringHref(employee)} className="inline-flex items-center gap-1 rounded-full bg-[#111315] px-3 py-2 text-sm font-semibold text-white dark:bg-[#f4f5f0] dark:text-[#111315]">Contratar<ArrowRight size={14}/></Link></div></div></motion.article>; }
 
-function TeamPreview() {
-  return (
-    <motion.div {...reveal} className="surface rounded-[2rem] p-4 shadow-2xl shadow-black/10">
-      <div className="flex items-center justify-between border-b border-[var(--line)] p-3">
-        <span className="text-sm font-semibold">Tu equipo Empleado24</span>
-        <span className="rounded-full bg-black/5 px-2 py-1 text-[10px] text-[var(--muted)] dark:bg-white/5">Listos para incorporar</span>
-      </div>
-      <div className="grid gap-3 p-3 pt-4">
-        {[
-          [Headphones, 'Recepcionista IA', 'Atiende llamadas y citas', 'Disponible'],
-          [Mail, 'Especialista Email IA', 'Cuida contactos y campañas', 'Disponible'],
-          [TrendingUp, 'Closer IA', 'Da seguimiento a oportunidades', 'Disponible'],
-        ].map(([EmployeeIcon, name, role, status]) => {
-          const Icon = EmployeeIcon as LucideIcon;
-          return <div key={String(name)} className="flex items-center gap-4 rounded-2xl border border-[var(--line)] p-4"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#efffcf] text-[#526a00] dark:bg-[#263300] dark:text-[#d7f897]"><Icon size={18} /></span><div className="min-w-0 flex-1"><p className="font-semibold">{String(name)}</p><p className="mt-1 text-xs text-[var(--muted)]">{String(role)}</p></div><span className={`hidden text-xs sm:block ${status === 'Disponible' ? 'text-[#789500]' : 'text-[var(--muted)]'}`}>{String(status)}</span></div>;
-        })}
-      </div>
-      <div className="rounded-2xl bg-[#111315] p-5 text-white">
-        <p className="text-sm text-white/55">Tu primera incorporación</p>
-        <p className="mt-2 text-2xl font-semibold">Lista en menos de 5 minutos.</p>
-        <p className="mt-5 inline-flex items-center gap-2 text-sm text-[#ccff00]"><Sparkles size={15} /> 3 días para comprobarlo</p>
-      </div>
-    </motion.div>
-  );
-}
+function Pack({ name, price, status, members, description, href }: { name: string; price: string; status: string; members: string[]; description: string; href?: string }) { return <article className={`rounded-[2rem] border p-7 ${href ? 'border-[#9abd00] bg-[#f9ffe9] dark:bg-[#202900]' : 'border-[var(--line)] bg-[var(--card)]'}`}><div className="flex items-start justify-between gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#111315] text-[#ccff00] dark:bg-[#f4f5f0] dark:text-[#526a00]"><Users size={20}/></span><span className="rounded-full bg-black/5 px-3 py-1 text-xs text-[var(--muted)] dark:bg-white/5">{status}</span></div><h3 className="mt-8 text-2xl font-semibold tracking-[-.05em]">{name}</h3><p className="mt-3 min-h-12 text-sm leading-6 text-[var(--muted)]">{description}</p><ul className="mt-6 grid gap-2 text-sm">{members.map((member) => <li key={member} className="flex gap-2"><Check size={16} className="text-[#789500]"/>{member}</li>)}</ul><div className="mt-8 flex items-center justify-between border-t border-[var(--line)] pt-5"><span className="text-xl font-semibold">{price}</span>{href ? <Link href={href} className="inline-flex items-center gap-1 rounded-full bg-[#111315] px-4 py-2 text-sm font-semibold text-white dark:bg-[#f4f5f0] dark:text-[#111315]">Conocer pack <ArrowRight size={14}/></Link> : <span className="text-sm font-medium text-[var(--muted)]">Próximamente</span>}</div></article>; }
+
+function OrgChart() { const receptionist = employeeShowcase.find((employee) => employee.planKey === 'one_employee'); const email = employeeShowcase.find((employee) => employee.planKey === 'employee_email'); const closer = employeeShowcase.find((employee) => employee.planKey === 'employee_closer'); const whatsapp = employeeShowcase.find((employee) => employee.planKey === 'employee_whatsapp'); const budget = employeeShowcase.find((employee) => employee.planKey === 'employee_budget'); if (!receptionist || !email || !closer || !whatsapp || !budget) return null; const booking = { slug: 'booking-ia', person: 'Miguel', name: 'Booking IA', role: 'Agenda y recordatorios', avatarPosition: '0% 0%', comingSoon: true }; return <div className="mt-10 overflow-x-auto pb-3"><div className="min-w-[780px]"><div className="mx-auto grid h-16 w-44 place-items-center rounded-2xl bg-[#111315] text-sm font-semibold text-white">CEO · Tu empresa</div><div className="mx-auto h-8 w-px bg-[#789500]"/><div className="grid grid-cols-3 gap-3"><OrgNode employee={receptionist}/><OrgNode employee={whatsapp}/><OrgNode employee={closer}/></div><div className="mx-auto h-8 w-px bg-[#789500]"/><div className="grid grid-cols-3 gap-3"><OrgNode employee={budget}/><OrgNode employee={booking}/><OrgNode employee={email}/></div></div></div>; }
+function OrgNode({ employee }: { employee: { slug: string; person: string; name: string; role: string; avatarPosition: string; comingSoon?: boolean } }) { const content = <><EmployeeAvatar position={employee.avatarPosition} className="h-10 w-10"/><span className="min-w-0"><b className="block truncate text-sm">{employee.person}</b><span className="block truncate text-xs text-[var(--muted)]">{employee.name}</span></span>{employee.comingSoon && <span className="ml-auto text-[10px] text-[#789500]">Próximamente</span>}</>; return employee.comingSoon ? <div className="flex items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--card)] p-3 opacity-75">{content}</div> : <Link href={`/empleados/${employee.slug}`} className="flex items-center gap-3 rounded-2xl border border-[var(--line)] bg-[var(--card)] p-3 transition hover:-translate-y-0.5 hover:border-[#789500]">{content}</Link>; }
+
+function HeroTeam() { return <motion.div {...reveal} className="surface rounded-[2rem] p-4 shadow-2xl shadow-black/10"><div className="flex items-center justify-between border-b border-[var(--line)] p-3"><span className="text-sm font-semibold">Tu futuro equipo</span><span className="rounded-full bg-[#e9ffcf] px-2 py-1 text-[10px] font-medium text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]">Listos para incorporar</span></div><div className="grid gap-3 p-3 pt-4">{employeeShowcase.slice(0, 4).map((employee) => <div key={employee.slug} className="flex items-center gap-3 rounded-2xl border border-[var(--line)] p-3"><EmployeeAvatar position={employee.avatarPosition} className="h-11 w-11"/><div className="min-w-0 flex-1"><p className="font-semibold">{employee.name}</p><p className="mt-1 truncate text-xs text-[var(--muted)]">{employee.role}</p></div><Sparkles size={15} className="text-[#789500]"/></div>)}</div><div className="rounded-2xl bg-[#111315] p-5 text-white"><p className="text-sm text-white/55">Tu primera incorporación</p><p className="mt-2 text-2xl font-semibold">Elige la función que necesitas.</p><p className="mt-5 inline-flex items-center gap-2 text-sm text-[#ccff00]"><Check size={15}/> 3 días para comprobarlo</p></div></motion.div>; }
