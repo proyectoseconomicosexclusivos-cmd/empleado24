@@ -9,22 +9,8 @@ export const departments = {
     flow: 'Conversación → oportunidad → seguimiento → cita → presupuesto → venta',
     hours: '12 h/semana',
   },
-  marketing: {
-    key: 'marketing',
-    name: 'Departamento Marketing IA',
-    description: 'Email, contenido, posicionamiento y campañas conectados.',
-    employeeTypes: ['email_specialist', 'social_media', 'youtube', 'seo', 'ads'],
-    members: ['Especialista Email IA', 'Social Media IA', 'YouTube IA', 'SEO IA', 'Ads IA'],
-    comingSoon: true,
-  },
-  company: {
-    key: 'company',
-    name: 'Departamento Empresa IA',
-    description: 'Clientes, operaciones y administración unidos.',
-    employeeTypes: ['crm', 'finance', 'hr', 'customer_success', 'ceo_advisor'],
-    members: ['CRM IA', 'Finanzas IA', 'RRHH IA', 'Atención Cliente IA', 'CEO Advisor IA'],
-    comingSoon: true,
-  },
+  marketing: { key: 'marketing', name: 'Departamento Marketing IA', description: 'Email, contenido, posicionamiento y campañas conectados.', employeeTypes: ['email_specialist', 'social_media', 'youtube', 'seo', 'ads'], members: ['Especialista Email IA', 'Social Media IA', 'YouTube IA', 'SEO IA', 'Ads IA'], comingSoon: true },
+  company: { key: 'company', name: 'Departamento Empresa IA', description: 'Clientes, operaciones y administración unidos.', employeeTypes: ['crm', 'finance', 'hr', 'customer_success', 'ceo_advisor'], members: ['CRM IA', 'Finanzas IA', 'RRHH IA', 'Atención Cliente IA', 'CEO Advisor IA'], comingSoon: true },
 } as const;
 
 export type DepartmentKey = keyof typeof departments;
