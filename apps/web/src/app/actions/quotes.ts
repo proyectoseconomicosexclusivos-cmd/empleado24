@@ -39,12 +39,16 @@ export async function createQuote(formData: FormData) {
     unitCostCents: Math.round(numeric(formData, 'unit_cost_euros', 0) * 100), plannedDays: Math.max(0, Math.round(numeric(formData, 'planned_days', 0))),
   };
   if (!line.concept) throw new Error('Añade al menos una partida.');
+  const customerName = value(formData, 'customer_name');
+  const customerEmail = value(formData, 'customer_email');
+  const customerPhone = value(formData, 'customer_phone');
+  if (!customerName && !customerEmail && !customerPhone) throw new Error('Añade el nombre, email o teléfono del cliente para guardar su historial.');
   const marginBps = numeric(formData, 'margin_percent', parsed.marginBps ? parsed.marginBps / 100 : 35) * 100;
   const discountBps = numeric(formData, 'discount_percent', parsed.discountBps ? parsed.discountBps / 100 : 0) * 100;
   const taxBps = numeric(formData, 'tax_percent', 21) * 100;
   const totals = calculateQuote({ lines: [line], marginBps: Math.round(marginBps), discountBps: Math.round(discountBps), taxBps: Math.round(taxBps) });
   const admin = createAdminClient() as any;
-  const customer = await getCustomer({ companyId: context.companyId, name: value(formData, 'customer_name') || null, email: value(formData, 'customer_email') || null, phone: value(formData, 'customer_phone') || null, source: 'budget_specialist' });
+  const customer = await getCustomer({ companyId: context.companyId, name: customerName || null, email: customerEmail || null, phone: customerPhone || null, source: 'budget_specialist' });
   const { data: quote, error } = await admin.from('quotes').insert({
     company_id: context.companyId, customer_id: customer.id, employee_id: context.employeeId, title, brief: parsed.brief,
     currency: 'EUR', current_version: 1, cost_cents: totals.costCents, subtotal_cents: totals.subtotalCents, tax_cents: totals.taxCents,
