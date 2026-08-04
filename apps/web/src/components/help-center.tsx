@@ -12,6 +12,9 @@ type CopilotContext = {
 };
 
 const answers = [
+  { keys: ['qué empleado', 'recomiendas', 'necesito', 'pack'], title: 'Te recomiendo según tu objetivo', text: 'Para atender llamadas: Laura, Recepcionista IA. Para mensajes: David, WhatsApp IA. Para vender: Carlos, Closer IA. Para presupuestos: Marta. Para mantener el contacto: Elena, Especialista Email IA. El Pack Comercial reúne Recepcionista, WhatsApp y Closer.' },
+  { keys: ['diferencia', 'whatsapp', 'recepcionista'], title: 'WhatsApp y Recepcionista', text: 'David atiende mensajes de WhatsApp. Laura atiende llamadas y puede organizar citas. Los dos pueden compartir el historial de tu empresa.' },
+  { keys: ['ahorro', 'roi', 'horas'], title: 'Tiempo que puede recuperar tu equipo', text: 'Cada ficha muestra una estimación de tiempo recuperable según su función. El resultado depende del volumen de trabajo y de la información que aportes durante la incorporación.' },
   { keys: ['teléfono', 'numero', 'número', 'zadarma'], title: 'Conectar tu teléfono', text: 'Abre “Conectar teléfono”, compra o elige el número que quieres usar y sigue los pasos para verificarlo. Cuando aparezca “Todo correcto”, puedes continuar.' },
   { keys: ['calendar', 'cita', 'agenda', 'google'], title: 'Conectar tu agenda', text: 'Puedes conectar Google Calendar para que tu Recepcionista reserve citas. También puedes omitirlo y conectarlo más tarde.' },
   { keys: ['empleado', 'recepcionista', 'crear'], title: 'Crear tu Recepcionista', text: 'En “Mi Recepcionista” indica el nombre de tu empresa, el idioma y el horario. Empleado24 prepara el resto automáticamente.' },

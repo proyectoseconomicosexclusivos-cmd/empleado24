@@ -15,6 +15,7 @@ while true; do
     call "/api/cron/reconcile-calls" || true
     call "/api/cron/release-guardian" || true
   fi
+  if [ $((minute % 60)) -eq 0 ]; then call "/api/cron/analytics-rollup" || true; fi
   if [ $((minute % 1440)) -eq 0 ]; then call "/api/cron/release-guardian?mode=daily" || true; fi
   if [ $((minute % 10080)) -eq 0 ]; then call "/api/cron/release-guardian?mode=weekly" || true; fi
   minute=$((minute + 1))

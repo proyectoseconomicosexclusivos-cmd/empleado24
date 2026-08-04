@@ -1,5 +1,6 @@
 import 'server-only';
 import { createHash } from 'node:crypto';
+import { createConnection } from 'node:net';
 import { resilientFetch } from '@empleado24/integrations/resilient-fetch';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { structuredLog } from '@/lib/structured-logger';
@@ -20,6 +21,8 @@ export interface RateLimitDecision {
 }
 
 async function redisRateLimit(bucket: string, maxRequests: number, windowSeconds: number) {
+  const localRedisUrl = process.env.REDIS_URL;
+  if (localRedisUrl) return localRedisRateLimit(localRedisUrl, bucket, maxRequests, windowSeconds);
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
   if (!url || !token) throw new Error('global_rate_limit_not_configured');
@@ -36,6 +39,51 @@ async function redisRateLimit(bucket: string, maxRequests: number, windowSeconds
   const payload = await response.json() as { result?: number };
   const hits = Number(payload.result);
   if (!Number.isFinite(hits)) throw new Error('global_rate_limit_invalid_response');
+  return {
+    allowed: hits <= maxRequests,
+    remaining: Math.max(maxRequests - hits, 0),
+    reset_at: new Date(Date.now() + windowSeconds * 1000).toISOString(),
+  };
+}
+
+function respCommand(parts: string[]) {
+  return `*${parts.length}\r\n${parts.map((part) => `$${Buffer.byteLength(part)}\r\n${part}\r\n`).join('')}`;
+}
+
+async function localRedisRateLimit(urlValue: string, bucket: string, maxRequests: number, windowSeconds: number) {
+  const url = new URL(urlValue);
+  const password = decodeURIComponent(url.password);
+  if (!password) throw new Error('local_redis_password_missing');
+  const script = 'local n=redis.call("INCR",KEYS[1]); if n==1 then redis.call("EXPIRE",KEYS[1],ARGV[1]); end; return n';
+  const payload = [
+    respCommand(['AUTH', decodeURIComponent(url.username) || 'default', password]),
+    respCommand(['EVAL', script, '1', bucket, String(windowSeconds)]),
+  ].join('');
+  const response = await new Promise<string>((resolve, reject) => {
+    const socket = createConnection({ host: url.hostname, port: Number(url.port || 6379) });
+    let body = '';
+    const timer = setTimeout(() => {
+      socket.destroy();
+      reject(new Error('local_redis_timeout'));
+    }, 2_000);
+    socket.on('connect', () => socket.write(payload));
+    socket.on('data', (chunk) => {
+      body += chunk.toString();
+      const matches = body.match(/:([0-9]+)\r\n/g);
+      const latestHit = matches?.[matches.length - 1];
+      if (latestHit) {
+        clearTimeout(timer);
+        socket.end();
+        resolve(latestHit);
+      }
+    });
+    socket.on('error', (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+  });
+  const hits = Number(response.match(/:([0-9]+)/)?.[1]);
+  if (!Number.isFinite(hits)) throw new Error('local_redis_invalid_response');
   return {
     allowed: hits <= maxRequests,
     remaining: Math.max(maxRequests - hits, 0),

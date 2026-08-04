@@ -1,18 +1,16 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { BusinessAnalyticsTracker } from '@/components/business-analytics-tracker';
+import { PublicCopilot } from '@/components/public-copilot';
 
-const geist = Geist({ subsets: ['latin'], variable: '--font-geist' });
-const mono = Geist_Mono({ subsets: ['latin'], variable: '--font-mono' });
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://empleado24.com'),
   title: 'Empleado24 | Contrata empleados con IA desde 97 €/mes',
-  description: 'Contrata una Recepcionista IA o un Especialista Email IA para tu empresa. Trabajan 24 horas al día y pueden empezar en menos de 5 minutos.',
+  description: 'Contrata empleados con IA para atender, vender, presupuestar y mantener el contacto con tus clientes. Desde 97 €/mes.',
   alternates: { canonical: '/' },
   icons: { icon: '/icon.svg', shortcut: '/icon.svg', apple: '/icon.svg' },
-  openGraph: { title: 'Empleado24 — Contrata empleados con IA para tu empresa', description: 'Recepcionista IA y Especialista Email IA desde 97 €/mes. Incorporación guiada en menos de 5 minutos.', type: 'website', locale: 'es_ES', url: 'https://empleado24.com', siteName: 'Empleado24' },
+  openGraph: { title: 'Empleado24 — Contrata empleados con IA para tu empresa', description: 'Atención, ventas, WhatsApp, presupuestos y email desde 97 €/mes.', type: 'website', locale: 'es_ES', url: 'https://empleado24.com', siteName: 'Empleado24' },
   twitter: { card: 'summary_large_image', title: 'Empleado24 | Empleados con IA', description: 'Contrata tu primer empleado con IA desde 97 €/mes.' },
 };
 
@@ -28,5 +26,5 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       ]},
     ],
   };
-  return <html lang="es" suppressHydrationWarning className={`${geist.variable} ${mono.variable}`}><body>{children}<BusinessAnalyticsTracker /><script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(schema)}}/></body></html>;
+  return <html lang="es" suppressHydrationWarning><body>{children}<BusinessAnalyticsTracker /><PublicCopilot /><script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(schema)}}/></body></html>;
 }
