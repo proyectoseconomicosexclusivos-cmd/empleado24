@@ -2,6 +2,7 @@ export type EmployeeProductKey =
   | 'receptionist'
   | 'closer'
   | 'whatsapp'
+  | 'budget_specialist'
   | 'secretary'
   | 'sales_premium'
   | 'sales_director';
@@ -21,6 +22,7 @@ export const employeeProducts: readonly EmployeeProduct[] = [
   { key: 'receptionist', name: 'Recepcionista', description: 'Atiende llamadas y organiza las primeras conversaciones.', monthlyPriceCents: 9700, includedMinutes: null, capabilities: ['llamadas', 'citas', 'preguntas frecuentes'], active: true },
   { key: 'closer', name: 'Closer IA', description: 'Hace seguimiento de oportunidades y ayuda a convertirlas en clientes.', monthlyPriceCents: 19700, includedMinutes: null, capabilities: ['seguimiento', 'llamadas', 'email', 'agenda', 'calificación'], active: true },
   { key: 'whatsapp', name: 'WhatsApp IA', description: 'Atiende mensajes y crea oportunidades para tu empresa.', monthlyPriceCents: 9700, includedMinutes: null, capabilities: ['mensajes', 'citas', 'seguimiento'], active: true },
+  { key: 'budget_specialist', name: 'Especialista Presupuestos IA', description: 'Prepara presupuestos rentables y coordina el seguimiento comercial.', monthlyPriceCents: 19700, includedMinutes: null, capabilities: ['presupuestos', 'márgenes', 'seguimiento'], active: true },
   { key: 'secretary', name: 'Secretaria', description: 'Ordena tareas, avisos y coordinación diaria.', monthlyPriceCents: 19700, includedMinutes: null, capabilities: ['agenda', 'recordatorios', 'coordinación'], active: false },
   { key: 'sales_premium', name: 'Ventas Premium', description: 'Acompaña conversaciones comerciales de alto valor.', monthlyPriceCents: 29700, includedMinutes: null, capabilities: ['ventas', 'seguimiento', 'resumen'], active: false },
   { key: 'sales_director', name: 'Director Comercial', description: 'Coordina el rendimiento comercial del equipo.', monthlyPriceCents: 49700, includedMinutes: null, capabilities: ['supervisión', 'ventas', 'previsión'], active: false },
@@ -30,5 +32,6 @@ export function employeeProductForPlan(planKey: string | null | undefined) {
   if (planKey === 'one_employee') return employeeProducts[0];
   if (planKey === 'employee_closer') return employeeProducts[1];
   if (planKey === 'employee_whatsapp') return employeeProducts[2];
+  if (planKey === 'employee_budget') return employeeProducts[3];
   return null;
 }
