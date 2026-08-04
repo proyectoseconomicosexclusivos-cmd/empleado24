@@ -3,10 +3,14 @@
 import Link from 'next/link';
 import { ArrowRight, Check, Headphones } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
+import { employeeShowcase } from '@/lib/employee-showcase';
 
 export default function Register() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const selectedEmployee = employeeShowcase.find((employee) => employee.planKey === searchParams.get('employee'));
   const [message, setMessage] = useState('');
   const [isError, setIsError] = useState(false);
   const [pending, setPending] = useState(false);
@@ -44,7 +48,7 @@ export default function Register() {
       return;
     }
     setIsError(false);
-    setMessage('Te hemos enviado un email. Confírmalo para darle la bienvenida a tu Recepcionista.');
+    setMessage(`Te hemos enviado un email. Confírmalo para darle la bienvenida a ${selectedEmployee?.name ?? 'tu nuevo empleado'}.`);
     setPending(false);
   }
 
@@ -66,8 +70,8 @@ export default function Register() {
         <div className="w-full max-w-md">
           <Link href="/" className="text-lg font-bold tracking-[-.07em] lg:hidden">EMPLEADO<span className="text-[#789500]">24</span></Link>
           <p className="eyebrow mt-12 lg:mt-0">Empieza la contratación</p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-[-.06em]">Conoce a tu nueva Recepcionista.</h1>
-          <p className="mt-4 leading-7 text-[var(--muted)]">Primero necesitamos saber quién la incorpora al equipo.</p>
+          <h1 className="mt-3 text-4xl font-semibold tracking-[-.06em]">{selectedEmployee ? `Conoce a ${selectedEmployee.name}.` : 'Conoce a tu nuevo empleado.'}</h1>
+          <p className="mt-4 leading-7 text-[var(--muted)]">Primero necesitamos saber quién lo incorpora al equipo.</p>
           <form action={submit} className="mt-9">
             <label className="text-sm font-medium" htmlFor="name">¿Cómo te llamas?</label>
             <input id="name" name="name" autoComplete="name" required placeholder="Tu nombre" className="input mt-2" />
