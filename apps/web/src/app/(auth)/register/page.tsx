@@ -4,10 +4,18 @@ import Link from 'next/link';
 import { ArrowRight, Check, Headphones } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { employeeShowcase } from '@/lib/employee-showcase';
 
 export default function Register() {
+  return <Suspense fallback={<RegisterFallback />}><RegisterForm /></Suspense>;
+}
+
+function RegisterFallback() {
+  return <main className="min-h-screen bg-[var(--bg)]" aria-busy="true" />;
+}
+
+function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedEmployee = employeeShowcase.find((employee) => employee.planKey === searchParams.get('employee'));
