@@ -17,6 +17,7 @@ const answers = [
   { keys: ['empleado', 'recepcionista', 'crear'], title: 'Crear tu Recepcionista', text: 'En “Mi Recepcionista” indica el nombre de tu empresa, el idioma y el horario. Empleado24 prepara el resto automáticamente.' },
   { keys: ['llamada', 'probar', 'funciona'], title: 'Hacer una llamada de prueba', text: 'Ve a “Primera llamada” y llama al número grande que aparece. Cuando termine, vuelve a la pantalla y pulsa “Ya he realizado la llamada”.' },
   { keys: ['precio', 'pago', 'factura', 'plan', 'minutos', 'recarga'], title: 'Pagos y minutos', text: 'Puedes consultar tu plan, el próximo cobro y tus minutos desde “Facturación”. Las recargas se añaden a tu saldo después de confirmar el pago.' },
+  { keys: ['presupuesto', 'partida', 'margen', 'descuento', 'pdf', 'versión'], title: 'Preparar un presupuesto', text: 'Abre “Presupuestos IA”, describe el trabajo y añade la primera partida. Puedes indicar el margen o descuento en la descripción. El Especialista guarda una versión, la vincula al cliente y prepara el seguimiento.' },
 ];
 
 export function HelpCenter({ context }: { context?: CopilotContext }) {
