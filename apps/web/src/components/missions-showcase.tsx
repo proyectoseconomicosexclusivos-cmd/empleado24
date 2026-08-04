@@ -1,0 +1,10 @@
+import Link from 'next/link';
+import { ArrowRight, CalendarCheck, Mail, TrendingUp } from 'lucide-react';
+
+const missions = [
+  { name: 'Conseguir una venta', detail: 'Atender, entender el interés, preparar la siguiente acción y acompañar la decisión.', team: ['WhatsApp IA', 'Closer IA', 'Presupuestos IA'], icon: TrendingUp },
+  { name: 'Recuperar clientes', detail: 'Volver a abrir una conversación relevante sin que un contacto se pierda en el tiempo.', team: ['Email IA', 'WhatsApp IA', 'Closer IA'], icon: Mail },
+  { name: 'Conseguir reuniones', detail: 'Responder, encontrar una hora y dejar la cita preparada para tu equipo.', team: ['Recepcionista IA', 'WhatsApp IA', 'Agenda'], icon: CalendarCheck },
+];
+
+export function MissionsShowcase() { return <section className="mx-auto max-w-7xl px-5 py-20 sm:px-6 md:px-10 md:py-28"><div className="max-w-3xl"><p className="eyebrow">Misiones</p><h2 className="mt-4 text-4xl font-semibold tracking-[-.06em] md:text-6xl">No contratas software. Consigues resultados.</h2><p className="mt-5 text-lg leading-8 text-[var(--muted)]">Una misión reúne a varios empleados alrededor de un resultado concreto para tu empresa.</p></div><div className="mt-12 grid gap-5 lg:grid-cols-3">{missions.map(({ name, detail, team, icon: Icon }) => <article className="surface group rounded-[2rem] p-7 transition duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/5" key={name}><span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#efffcf] text-[#526a00] dark:bg-[#263300] dark:text-[#d7f897]"><Icon size={20}/></span><h3 className="mt-8 text-2xl font-semibold tracking-[-.05em]">{name}</h3><p className="mt-3 min-h-16 text-sm leading-6 text-[var(--muted)]">{detail}</p><div className="mt-6 flex flex-wrap gap-2">{team.map((member) => <span className="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-medium" key={member}>{member}</span>)}</div><Link href="/#empleados" className="mt-7 inline-flex items-center gap-2 text-sm font-semibold underline underline-offset-4">Crear esta misión <ArrowRight size={15}/></Link></article>)}</div></section>; }
