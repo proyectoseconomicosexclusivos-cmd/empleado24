@@ -112,6 +112,13 @@ jobs:
               echo "HEALTH: OK"
               echo "DEPLOY: SUCCESS"
               compose ps
+              new_container="$(compose ps -q app)"
+              echo "RUNTIME: docker ps"
+              docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.CreatedAt}}\t{{.Status}}'
+              echo "RUNTIME: app inspect"
+              docker inspect --format='image={{.Config.Image}} created={{.Created}} state={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}} image_id={{.Image}}' "$new_container"
+              echo "RUNTIME: Next build ID"
+              docker exec "$new_container" cat /app/apps/web/.next/BUILD_ID
               exit 0
             fi
 
