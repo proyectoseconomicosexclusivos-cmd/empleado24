@@ -1,24 +1,280 @@
 import Link from 'next/link';
-import { ArrowRight, Check, ChevronRight, CirclePlay, Globe2, ShieldCheck, Star } from 'lucide-react';
+import {
+  ArrowRight,
+  Check,
+  ChevronRight,
+  CirclePlay,
+  Globe2,
+  ShieldCheck,
+  Star,
+} from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { EmployeeAvatar } from '@/components/employee-avatar';
 import { employeeBySlug, hiringHref } from '@/lib/employee-showcase';
 
-export default async function EmployeeProfilePage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function EmployeeProfilePage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const { slug } = await params;
   const employee = employeeBySlug[slug];
   if (!employee) notFound();
-  return <main className="min-h-screen">
-    <header className="border-b border-[var(--line)] bg-[var(--bg)]/90 backdrop-blur"><div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-6 md:px-10"><Link href="/" className="text-lg font-bold tracking-[-.07em]">EMPLEADO<span className="text-[#789500]">24</span></Link><Link href="/#empleados" className="text-sm font-medium">Ver empleados</Link></div></header>
-    <section className="mx-auto grid max-w-6xl gap-10 px-5 py-14 sm:px-6 md:grid-cols-[.8fr_1.2fr] md:px-10 md:py-20"><div className="rounded-[2rem] bg-[#efffcf] p-6 dark:bg-[#263300]"><EmployeeAvatar portrait={employee.portrait} name={employee.person} priority className="aspect-square w-full rounded-[1.4rem]"/><div className="mt-6 flex items-center gap-1 text-[#789500]" aria-label="Valoración visual de cinco estrellas">{Array.from({ length: 5 }).map((_, index) => <Star key={index} size={16} fill="currentColor" />)}</div><p className="mt-3 text-sm font-medium">Perfil de empleado IA · disponible para incorporar</p></div><div><p className="eyebrow">{employee.specialty}</p><h1 className="mt-3 text-5xl font-semibold tracking-[-.07em] md:text-6xl">{employee.person}</h1><p className="mt-2 text-xl font-medium text-[#789500]">{employee.name}</p><p className="mt-5 text-xl leading-8 text-[var(--muted)]">“{employee.personalIntro}”</p><p className="mt-7 max-w-2xl leading-7 text-[var(--muted)]">{employee.summary}</p><div className="mt-7 flex flex-wrap gap-2 text-sm"><span className="rounded-full border border-[var(--line)] px-3 py-1.5">Especialidad: {employee.specialty}</span><span className="rounded-full border border-[var(--line)] px-3 py-1.5">Conocimiento configurable por empresa</span><span className="inline-flex items-center gap-1 rounded-full border border-[var(--line)] px-3 py-1.5"><Globe2 size={14}/>{employee.languages.join(' · ')}</span></div><div className="mt-8 flex flex-wrap items-center gap-4"><span className="text-3xl font-semibold tracking-[-.05em]">{employee.price}</span><span className="rounded-full bg-[#e9ffcf] px-3 py-1.5 text-sm font-medium text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]">Incorporación guiada para tu empresa</span></div><div className="mt-9 flex flex-wrap gap-3"><Link href={hiringHref(employee)} className="inline-flex items-center gap-2 rounded-full bg-[#111315] px-6 py-3 font-semibold text-white dark:bg-[#ccff00] dark:text-[#111315]">Contratar a {employee.person}<ArrowRight size={16}/></Link><Link href={`/demo?employee=${employee.slug}`} className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] px-6 py-3 font-semibold">Hablar con {employee.person}<CirclePlay size={16}/></Link></div></div></section>
-    <section className="border-y border-[var(--line)] bg-black/[.015] dark:bg-white/[.015]"><div className="mx-auto grid max-w-6xl gap-6 px-5 py-14 sm:px-6 md:grid-cols-[1.1fr_.9fr] md:px-10"><article className="rounded-[2rem] bg-[#111315] p-7 text-white"><div className="flex items-center gap-2 text-[#ccff00]"><CirclePlay size={19}/><span className="text-xs font-semibold uppercase tracking-[.12em]">Vídeo demostración</span></div><h2 className="mt-5 text-3xl font-semibold tracking-[-.05em]">Conoce cómo trabaja {employee.person}.</h2><p className="mt-3 max-w-xl text-sm leading-6 text-white/60">Espacio preparado para una demostración real. Verás una conversación, una acción y el resultado que queda guardado en tu empresa.</p><div className="mt-7 grid aspect-video place-items-center rounded-2xl border border-white/15 bg-white/[.06] text-center"><div><CirclePlay className="mx-auto text-[#ccff00]" size={36}/><p className="mt-3 text-sm font-medium">Demo próximamente</p></div></div></article><article className="surface rounded-[2rem] p-7"><p className="eyebrow">Sectores donde encaja mejor</p><h2 className="mt-3 text-2xl font-semibold">Especializado en tu forma de trabajar.</h2><div className="mt-7 flex flex-wrap gap-2">{employee.sectors.map((sector) => <span key={sector} className="rounded-full bg-[#efffcf] px-3 py-2 text-sm font-medium text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]">{sector}</span>)}</div><p className="mt-8 text-sm leading-6 text-[var(--muted)]">Aprende los datos y reglas de tu propia empresa durante la incorporación guiada.</p></article></div></section>
-    <section className="border-y border-[var(--line)] bg-black/[.015] dark:bg-white/[.015]"><div className="mx-auto grid max-w-6xl gap-6 px-5 py-14 sm:px-6 md:grid-cols-3 md:px-10"><Info title="Qué hace" items={employee.does}/><Info title="Qué no hace" items={employee.doesNot} muted/><Info title="Conecta con" items={employee.integrations}/></div></section>
-    <section className="mx-auto grid max-w-6xl gap-12 px-5 py-16 sm:px-6 md:grid-cols-[1.05fr_.95fr] md:px-10"><div><p className="eyebrow">En el día a día</p><h2 className="mt-3 text-3xl font-semibold tracking-[-.05em]">Ejemplos reales de trabajo</h2><div className="mt-7 grid gap-3">{employee.examples.map((example) => <div key={example} className="surface flex items-center gap-3 rounded-2xl p-5 text-sm"><ChevronRight className="text-[#789500]" size={17}/>{example}</div>)}</div></div><div><p className="eyebrow">Una forma de ampliar equipo</p><h2 className="mt-3 text-3xl font-semibold tracking-[-.05em]">Humano y empleado IA</h2><div className="mt-7 overflow-hidden rounded-3xl border border-[var(--line)] text-sm"><div className="grid grid-cols-3 bg-[#111315] px-4 py-3 font-semibold text-white"><span>Aspecto</span><span>Humano</span><span className="text-[#ccff00]">Empleado IA</span></div><Compare label="Disponibilidad" human="Horario acordado" ai="Todos los días"/><Compare label="Incorporación" human="Selección y formación" ai="Bienvenida guiada"/><Compare label="Trabajo repetitivo" human="Tiempo limitado" ai="Capacidad constante"/></div></div></section>
-    <section className="mx-auto max-w-6xl px-5 pb-20 sm:px-6 md:px-10"><p className="eyebrow">Preguntas frecuentes</p><div className="mt-6 grid gap-4 md:grid-cols-2">{employee.faq.map((item) => <article className="surface rounded-3xl p-6" key={item.question}><h2 className="font-semibold">{item.question}</h2><p className="mt-3 text-sm leading-6 text-[var(--muted)]">{item.answer}</p></article>)}</div><Recommendation employee={employee}/><div className="mt-12 rounded-[2rem] bg-[#111315] p-8 text-white md:flex md:items-center md:justify-between"><div><div className="flex items-center gap-2 text-[#ccff00]"><ShieldCheck size={18}/><span className="text-xs font-semibold uppercase tracking-[.12em]">Incorporación guiada</span></div><h2 className="mt-4 text-3xl font-semibold tracking-[-.05em]">Conoce a {employee.person} hoy.</h2></div><Link href={hiringHref(employee)} className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#ccff00] px-6 py-3 font-semibold text-[#111315] md:mt-0">Contratar ahora<ArrowRight size={16}/></Link></div></section>
-  </main>;
+  return (
+    <main className="min-h-screen">
+      <header className="border-b border-[var(--line)] bg-[var(--bg)]/90 backdrop-blur">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-6 md:px-10">
+          <Link href="/" className="text-lg font-bold tracking-[-.07em]">
+            EMPLEADO<span className="text-[#789500]">24</span>
+          </Link>
+          <Link href="/#empleados" className="text-sm font-medium">
+            Ver empleados
+          </Link>
+        </div>
+      </header>
+      <section className="mx-auto grid max-w-6xl gap-10 px-5 py-14 sm:px-6 md:grid-cols-[.8fr_1.2fr] md:px-10 md:py-20">
+        <div className="rounded-[2rem] bg-[#efffcf] p-6 dark:bg-[#263300]">
+          <EmployeeAvatar
+            portrait={employee.portrait}
+            name={employee.person}
+            priority
+            className="aspect-square w-full rounded-[1.4rem]"
+          />
+          <div
+            className="mt-6 flex items-center gap-1 text-[#789500]"
+            aria-label="Valoración visual de cinco estrellas"
+          >
+            {Array.from({ length: 5 }).map((_, index) => (
+              <Star key={index} size={16} fill="currentColor" />
+            ))}
+          </div>
+          <p className="mt-3 text-sm font-medium">
+            Perfil de empleado IA · disponible para incorporar
+          </p>
+        </div>
+        <div>
+          <p className="eyebrow">{employee.specialty}</p>
+          <h1 className="mt-3 text-5xl font-semibold tracking-[-.07em] md:text-6xl">
+            {employee.person}
+          </h1>
+          <p className="mt-2 text-xl font-medium text-[#789500]">{employee.name}</p>
+          <p className="mt-5 text-xl leading-8 text-[var(--muted)]">“{employee.personalIntro}”</p>
+          <p className="mt-7 max-w-2xl leading-7 text-[var(--muted)]">{employee.summary}</p>
+          <div className="mt-7 flex flex-wrap gap-2 text-sm">
+            <span className="rounded-full border border-[var(--line)] px-3 py-1.5">
+              Especialidad: {employee.specialty}
+            </span>
+            <span className="rounded-full border border-[var(--line)] px-3 py-1.5">
+              Conocimiento configurable por empresa
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-[var(--line)] px-3 py-1.5">
+              <Globe2 size={14} />
+              {employee.languages.join(' · ')}
+            </span>
+          </div>
+          <div className="mt-8 flex flex-wrap items-center gap-4">
+            <span className="text-3xl font-semibold tracking-[-.05em]">{employee.price}</span>
+            <span className="rounded-full bg-[#e9ffcf] px-3 py-1.5 text-sm font-medium text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]">
+            Incorporación guiada para tu empresa
+            </span>
+          </div>
+          <div className="mt-9 flex flex-wrap gap-3">
+            <Link
+              href={hiringHref(employee)}
+              className="inline-flex items-center gap-2 rounded-full bg-[#111315] px-6 py-3 font-semibold text-white dark:bg-[#ccff00] dark:text-[#111315]"
+            >
+              Contratar a {employee.person}
+              <ArrowRight size={16} />
+            </Link>
+            <Link
+              href={`/demo?employee=${employee.slug}`}
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] px-6 py-3 font-semibold"
+            >
+              Hablar con {employee.person}
+              <CirclePlay size={16} />
+            </Link>
+          </div>
+        </div>
+      </section>
+      <section className="border-y border-[var(--line)] bg-black/[.015] dark:bg-white/[.015]">
+        <div className="mx-auto grid max-w-6xl gap-6 px-5 py-14 sm:px-6 md:grid-cols-[1.1fr_.9fr] md:px-10">
+          <article className="rounded-[2rem] bg-[#111315] p-7 text-white">
+            <div className="flex items-center gap-2 text-[#ccff00]">
+              <CirclePlay size={19} />
+              <span className="text-xs font-semibold uppercase tracking-[.12em]">
+                Vídeo demostración
+              </span>
+            </div>
+            <h2 className="mt-5 text-3xl font-semibold tracking-[-.05em]">
+              Conoce cómo trabaja {employee.person}.
+            </h2>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-white/60">
+              Espacio preparado para una demostración real. Verás una conversación, una acción y el
+              resultado que queda guardado en tu empresa.
+            </p>
+            <div className="mt-7 grid aspect-video place-items-center rounded-2xl border border-white/15 bg-white/[.06] text-center">
+              <div>
+                <CirclePlay className="mx-auto text-[#ccff00]" size={36} />
+                <p className="mt-3 text-sm font-medium">Demo próximamente</p>
+              </div>
+            </div>
+          </article>
+          <article className="surface rounded-[2rem] p-7">
+            <p className="eyebrow">Sectores donde encaja mejor</p>
+            <h2 className="mt-3 text-2xl font-semibold">Especializado en tu forma de trabajar.</h2>
+            <div className="mt-7 flex flex-wrap gap-2">
+              {employee.sectors.map((sector) => (
+                <span
+                  key={sector}
+                  className="rounded-full bg-[#efffcf] px-3 py-2 text-sm font-medium text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]"
+                >
+                  {sector}
+                </span>
+              ))}
+            </div>
+            <p className="mt-8 text-sm leading-6 text-[var(--muted)]">
+              Aprende los datos y reglas de tu propia empresa durante la incorporación guiada.
+            </p>
+          </article>
+        </div>
+      </section>
+      <section className="border-y border-[var(--line)] bg-black/[.015] dark:bg-white/[.015]">
+        <div className="mx-auto grid max-w-6xl gap-6 px-5 py-14 sm:px-6 md:grid-cols-3 md:px-10">
+          <Info title="Qué hace" items={employee.does} />
+          <Info title="Qué no hace" items={employee.doesNot} muted />
+          <Info title="Conecta con" items={employee.integrations} />
+        </div>
+      </section>
+      <section className="mx-auto grid max-w-6xl gap-12 px-5 py-16 sm:px-6 md:grid-cols-[1.05fr_.95fr] md:px-10">
+        <div>
+          <p className="eyebrow">En el día a día</p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-.05em]">
+            Ejemplos reales de trabajo
+          </h2>
+          <div className="mt-7 grid gap-3">
+            {employee.examples.map((example) => (
+              <div
+                key={example}
+                className="surface flex items-center gap-3 rounded-2xl p-5 text-sm"
+              >
+                <ChevronRight className="text-[#789500]" size={17} />
+                {example}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="eyebrow">Una forma de ampliar equipo</p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-.05em]">Humano y empleado IA</h2>
+          <div className="mt-7 overflow-hidden rounded-3xl border border-[var(--line)] text-sm">
+            <div className="grid grid-cols-3 bg-[#111315] px-4 py-3 font-semibold text-white">
+              <span>Aspecto</span>
+              <span>Humano</span>
+              <span className="text-[#ccff00]">Empleado IA</span>
+            </div>
+            <Compare label="Disponibilidad" human="Horario acordado" ai="Todos los días" />
+            <Compare label="Incorporación" human="Selección y formación" ai="Bienvenida guiada" />
+            <Compare label="Trabajo repetitivo" human="Tiempo limitado" ai="Capacidad constante" />
+          </div>
+        </div>
+      </section>
+      <section className="mx-auto max-w-6xl px-5 pb-20 sm:px-6 md:px-10">
+        <p className="eyebrow">Preguntas frecuentes</p>
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          {employee.faq.map((item) => (
+            <article className="surface rounded-3xl p-6" key={item.question}>
+              <h2 className="font-semibold">{item.question}</h2>
+              <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{item.answer}</p>
+            </article>
+          ))}
+        </div>
+        <Recommendation employee={employee} />
+        <div className="mt-12 rounded-[2rem] bg-[#111315] p-8 text-white md:flex md:items-center md:justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-[#ccff00]">
+              <ShieldCheck size={18} />
+              <span className="text-xs font-semibold uppercase tracking-[.12em]">
+                Incorporación guiada
+              </span>
+            </div>
+            <h2 className="mt-4 text-3xl font-semibold tracking-[-.05em]">
+              Conoce a {employee.person} hoy.
+            </h2>
+          </div>
+          <Link
+            href={hiringHref(employee)}
+            className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#ccff00] px-6 py-3 font-semibold text-[#111315] md:mt-0"
+          >
+            Contratar ahora
+            <ArrowRight size={16} />
+          </Link>
+        </div>
+      </section>
+    </main>
+  );
 }
 
-function Info({ title, items, muted = false }: { title: string; items: string[]; muted?: boolean }) { return <article className="surface rounded-3xl p-6"><h2 className="text-lg font-semibold">{title}</h2><ul className="mt-5 grid gap-3 text-sm leading-6">{items.map((item) => <li className="flex gap-2" key={item}><Check size={16} className={muted ? 'mt-0.5 shrink-0 text-[var(--muted)]' : 'mt-0.5 shrink-0 text-[#789500]'}/>{item}</li>)}</ul></article>; }
-function Compare({ label, human, ai }: { label: string; human: string; ai: string }) { return <div className="grid grid-cols-3 gap-2 border-t border-[var(--line)] px-4 py-4"><strong className="font-medium">{label}</strong><span className="text-[var(--muted)]">{human}</span><span>{ai}</span></div>; }
-function Recommendation({ employee }: { employee: { planKey: string } }) { const map: Record<string, string[]> = { one_employee: ['WhatsApp IA', 'Closer IA', 'Especialista Presupuestos IA'], employee_whatsapp: ['Closer IA', 'Especialista Presupuestos IA'], employee_closer: ['Especialista Presupuestos IA', 'Especialista Email IA'], employee_budget: ['Closer IA', 'Especialista Email IA'], employee_email: ['Closer IA', 'WhatsApp IA'] }; return <article className="mt-12 rounded-3xl border border-[#cfe69a] bg-[#f8ffe9] p-6 dark:border-[#405422] dark:bg-[#202900]"><p className="eyebrow">Tu equipo puede crecer</p><h2 className="mt-2 text-2xl font-semibold tracking-[-.04em]">Normalmente, nuestros clientes incorporan después…</h2><p className="mt-2 text-sm leading-6 text-[var(--muted)]">{(map[employee.planKey] ?? []).join(' → ')}. Comparten el contexto de tu empresa para que el trabajo continúe sin repetir información.</p><Link href="/#packs" className="mt-5 inline-flex items-center gap-2 text-sm font-semibold underline underline-offset-4">Conocer equipos recomendados <ArrowRight size={15}/></Link></article>; }
-
+function Info({
+  title,
+  items,
+  muted = false,
+}: {
+  title: string;
+  items: string[];
+  muted?: boolean;
+}) {
+  return (
+    <article className="surface rounded-3xl p-6">
+      <h2 className="text-lg font-semibold">{title}</h2>
+      <ul className="mt-5 grid gap-3 text-sm leading-6">
+        {items.map((item) => (
+          <li className="flex gap-2" key={item}>
+            <Check
+              size={16}
+              className={
+                muted ? 'mt-0.5 shrink-0 text-[var(--muted)]' : 'mt-0.5 shrink-0 text-[#789500]'
+              }
+            />
+            {item}
+          </li>
+        ))}
+      </ul>
+    </article>
+  );
+}
+function Compare({ label, human, ai }: { label: string; human: string; ai: string }) {
+  return (
+    <div className="grid grid-cols-3 gap-2 border-t border-[var(--line)] px-4 py-4">
+      <strong className="font-medium">{label}</strong>
+      <span className="text-[var(--muted)]">{human}</span>
+      <span>{ai}</span>
+    </div>
+  );
+}
+function Recommendation({ employee }: { employee: { planKey: string } }) {
+  const map: Record<string, string[]> = {
+    one_employee: ['WhatsApp IA', 'Closer IA', 'Especialista Presupuestos IA'],
+    employee_whatsapp: ['Closer IA', 'Especialista Presupuestos IA'],
+    employee_closer: ['Especialista Presupuestos IA', 'Especialista Email IA'],
+    employee_budget: ['Closer IA', 'Especialista Email IA'],
+    employee_email: ['Closer IA', 'WhatsApp IA'],
+  };
+  return (
+    <article className="mt-12 rounded-3xl border border-[#cfe69a] bg-[#f8ffe9] p-6 dark:border-[#405422] dark:bg-[#202900]">
+      <p className="eyebrow">Tu equipo puede crecer</p>
+      <h2 className="mt-2 text-2xl font-semibold tracking-[-.04em]">
+        Normalmente, nuestros clientes incorporan después…
+      </h2>
+      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+        {(map[employee.planKey] ?? []).join(' → ')}. Comparten el contexto de tu empresa para que el
+        trabajo continúe sin repetir información.
+      </p>
+      <Link
+        href="/#packs"
+        className="mt-5 inline-flex items-center gap-2 text-sm font-semibold underline underline-offset-4"
+      >
+        Conocer equipos recomendados <ArrowRight size={15} />
+      </Link>
+    </article>
+  );
+}

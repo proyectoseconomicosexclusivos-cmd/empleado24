@@ -26,8 +26,20 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Reject high or critical production CVEs
         run: pnpm audit --prod --audit-level high
-      - name: Formatting
-        run: pnpm format:check
+      - name: Formatting changed source files
+        run: |
+          git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" --diff-filter=ACMR |
+            grep -E '\.(?:[cm]?[jt]sx?|json)
+      - name: ESLint
+        run: pnpm lint
+      - name: TypeScript
+        run: pnpm typecheck
+      - name: Tests
+        run: pnpm test
+      - name: Production build
+        run: pnpm build
+ |
+            xargs -r pnpm exec prettier --check
       - name: ESLint
         run: pnpm lint
       - name: TypeScript
