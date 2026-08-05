@@ -179,7 +179,7 @@ export function LauraSalesAssistant() {
     if (field === 'problem') { setProblem(value); setStep('recommendation'); }
     const nextState: CommercialState = field === 'problem' ? 'VERY_INTERESTED' : 'INTERESTED';
     analytics('laura_answer', `${field}:${value}`, `${field}:${value}`);
-    void remember({ action: 'answer', field, value, commercialState: nextState, ...next }); setState(nextState);
+    void remember({ action: 'answer', field, value, commercialState: nextState, sector: next.sector, companySize: next.companySize, primaryProblem: next.problem }); setState(nextState);
   }
 
   function showRecommendation() {
