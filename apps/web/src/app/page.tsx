@@ -3,13 +3,19 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Check, Clock3, ShieldCheck, Sparkles, Star, Users } from 'lucide-react';
+import {
+  ArrowRight,
+  Check,
+  Clock3,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  Users,
+} from 'lucide-react';
 import { EmployeeAvatar } from '@/components/employee-avatar';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { buttonVariants } from '@/components/ui/button';
 import { employeeShowcase, hiringHref } from '@/lib/employee-showcase';
-import { AutopilotShowcase } from '@/components/autopilot-showcase';
-import { MissionsShowcase } from '@/components/missions-showcase';
 
 const reveal = {
   initial: { opacity: 0, y: 16 },
@@ -47,9 +53,9 @@ export default function Home() {
           </Link>
           <nav className="hidden gap-7 text-sm text-[var(--muted)] md:flex">
             <Link href="#empleados">Empleados</Link>
-            <Link href="#empresa">Tu empresa</Link>
-            <Link href="#packs">Packs</Link>
-            <Link href="/demo">Ver demo</Link>
+            <Link href="#empleados">Conoce al equipo</Link>
+            <Link href="#recomendar">Encontrar mi empleado</Link>
+            <Link href="#preguntas">Preguntas frecuentes</Link>
           </nav>
           <div className="flex items-center gap-2">
             <ThemeToggle />
@@ -75,12 +81,12 @@ export default function Home() {
                 Tu equipo puede crecer hoy
               </span>
               <h1 className="mt-7 text-5xl font-semibold tracking-[-.075em] sm:text-6xl md:text-7xl">
-                <span className="block">CONTRATA EMPLEADOS IA</span>
-                <span className="block text-[#789500]">DESDE 97 €/MES</span>
+              <span className="block">CONTRATA EMPLEADOS CON IA</span>
+              <span className="block text-[#789500]">DESDE 97 €/MES</span>
               </h1>
               <p className="mt-7 max-w-2xl text-lg leading-8 text-[var(--muted)]">
-                Elige la función que necesitas y suma a tu empresa alguien preparado para atender,
-                organizar y hacer seguimiento cada día.
+                Personas virtuales que trabajan para tu empresa 24 horas al día. Elige a quien
+                necesitas y empieza con una incorporación guiada.
               </p>
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                 <Link
@@ -97,7 +103,7 @@ export default function Home() {
                   data-e24-zone="hero"
                   className={buttonVariants({ variant: 'outline' })}
                 >
-                  Ver trabajar a Laura
+                  Hablar con Laura
                 </Link>
               </div>
               <div className="mt-9 flex flex-wrap gap-x-6 gap-y-3 text-sm text-[var(--muted)]">
@@ -116,13 +122,13 @@ export default function Home() {
 
       <Section id="empleados">
         <div className="max-w-3xl">
-          <p className="eyebrow">Empleados IA</p>
+          <p className="eyebrow">Conoce a tu próximo empleado</p>
           <h2 className="mt-4 text-4xl font-semibold tracking-[-.06em] md:text-6xl">
-            Incorpora exactamente a quien necesitas.
+            No contratas software. Incorporas a una persona a tu equipo.
           </h2>
           <p className="mt-5 text-lg leading-8 text-[var(--muted)]">
-            Cada empleado tiene una función clara. Puedes contratarlo individualmente, conocer cómo
-            trabaja y ampliar el equipo cuando lo necesites.
+            Cada uno tiene un cargo, una especialidad y una forma clara de ayudarte. Conócelos,
+            prueba una demo y contrata solo la persona que tu empresa necesita hoy.
           </p>
         </div>
         <div className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
@@ -131,27 +137,11 @@ export default function Home() {
           ))}
         </div>
       </Section>
-      <section
-        id="empresa"
-        className="border-y border-[var(--line)] bg-black/[.018] dark:bg-white/[.018]"
-      >
+      <section id="recomendar" className="border-y border-[var(--line)] bg-[#111315] text-white">
         <Section>
-          <div className="max-w-3xl">
-            <p className="eyebrow">Tu empresa con Empleado24</p>
-            <h2 className="mt-4 text-4xl font-semibold tracking-[-.06em] md:text-5xl">
-              Un equipo que comparte el mismo contexto.
-            </h2>
-            <p className="mt-4 leading-7 text-[var(--muted)]">
-              Cada empleado conoce su responsabilidad y puede pasar el trabajo al siguiente miembro
-              del equipo cuando hace falta.
-            </p>
-          </div>
-          <OrgChart />
-          <OfficeDay />
+          <HiringQuiz />
         </Section>
       </section>
-      <AutopilotShowcase />
-      <MissionsShowcase />
 
       <section className="border-y border-[var(--line)] bg-black/[.018] dark:bg-white/[.018]">
         <Section id="packs">
@@ -203,43 +193,52 @@ export default function Home() {
       </section>
 
       <Section id="comparativa">
-        <div className="grid gap-12 lg:grid-cols-[.78fr_1.22fr] lg:items-start">
-          <div>
-            <p className="eyebrow">Más capacidad</p>
-            <h2 className="mt-4 text-4xl font-semibold tracking-[-.06em] md:text-5xl">
-              Un empleado que se incorpora a tu ritmo.
-            </h2>
-            <p className="mt-5 leading-7 text-[var(--muted)]">
-              Tu equipo humano conserva las decisiones y las relaciones importantes. Empleado24 se
-              ocupa de las tareas repetitivas, los seguimientos y la disponibilidad constante.
-            </p>
-          </div>
-          <div className="overflow-hidden rounded-3xl border border-[var(--line)] bg-[var(--card)]">
-            <div className="grid grid-cols-[1fr_.9fr_.9fr] border-b border-[var(--line)] bg-[#111315] px-4 py-4 text-xs font-semibold text-white sm:px-6">
-              <span>Comparativa</span>
-              <span>Empleado humano</span>
-              <span className="text-[#ccff00]">Empleado IA</span>
-            </div>
-            {[
-              ['Disponibilidad', 'Horario acordado', 'Todos los días'],
-              ['Incorporación', 'Selección y formación', 'Bienvenida guiada'],
-              ['Trabajo repetitivo', 'Tiempo limitado', 'Capacidad constante'],
-              ['Ampliar equipo', 'Nueva contratación', 'Añade otro empleado'],
-            ].map(([label, human, ai]) => (
-              <div
-                key={label}
-                className="grid grid-cols-[1fr_.9fr_.9fr] gap-2 border-b border-[var(--line)] px-4 py-5 text-xs last:border-b-0 sm:px-6 sm:text-sm"
-              >
-                <strong className="font-medium">{label}</strong>
-                <span className="text-[var(--muted)]">{human}</span>
-                <span>{ai}</span>
-              </div>
-            ))}
-          </div>
+        <div className="max-w-3xl">
+          <p className="eyebrow">Capacidad que puedes incorporar</p>
+          <h2 className="mt-4 text-4xl font-semibold tracking-[-.06em] md:text-6xl">
+            ¿Cuánto te cuesta no tener a la persona adecuada?
+          </h2>
+          <p className="mt-5 text-lg leading-8 text-[var(--muted)]">
+            Una comparación orientativa de coste anual. Cada negocio define su equipo y sus costes;
+            aquí puedes ver la diferencia de partida antes de decidir.
+          </p>
         </div>
+        <CostComparison />
+        <Link
+          href="#recomendar"
+          data-e24-track="comparison_recommendation"
+          data-e24-zone="comparison"
+          className="mt-9 inline-flex items-center gap-2 text-sm font-semibold underline underline-offset-4"
+        >
+          Encontrar mi empleado <ArrowRight size={15} />
+        </Link>
       </Section>
 
-      <section className="border-y border-[var(--line)] bg-black/[.018] dark:bg-white/[.018]">
+      <section id="empresa" className="border-y border-[var(--line)] bg-black/[.018] dark:bg-white/[.018]">
+        <Section>
+          <div className="max-w-3xl">
+            <p className="eyebrow">Un equipo, un objetivo</p>
+            <h2 className="mt-4 text-4xl font-semibold tracking-[-.06em] md:text-5xl">
+              Cada persona sabe cuándo pasar el trabajo a la siguiente.
+            </h2>
+            <p className="mt-4 leading-7 text-[var(--muted)]">
+              Atiende, responde, sigue una oportunidad y organiza la siguiente acción. Tú conservas
+              las decisiones importantes; el equipo mantiene el ritmo.
+            </p>
+          </div>
+          <OrgChart />
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link href="#empleados" className={buttonVariants({ variant: 'outline' })}>
+              Conocer al equipo <ArrowRight size={15} />
+            </Link>
+            <Link href="#packs" className={buttonVariants({ variant: 'lime' })}>
+              Ver equipos preparados <Users size={15} />
+            </Link>
+          </div>
+        </Section>
+      </section>
+
+      <section id="como-funciona" className="border-y border-[var(--line)] bg-black/[.018] dark:bg-white/[.018]">
         <Section id="como-funciona">
           <p className="eyebrow">Incorporación clara</p>
           <h2 className="mt-4 max-w-3xl text-4xl font-semibold tracking-[-.06em] md:text-6xl">
@@ -267,8 +266,42 @@ export default function Home() {
               </motion.article>
             ))}
           </div>
+          <Link href="#empleados" className="mt-9 inline-flex items-center gap-2 text-sm font-semibold underline underline-offset-4">
+            Elegir mi primer empleado <ArrowRight size={15} />
+          </Link>
         </Section>
       </section>
+
+      <Section id="preguntas">
+        <div className="grid gap-10 lg:grid-cols-[.7fr_1.3fr]">
+          <div>
+            <p className="eyebrow">Antes de incorporar</p>
+            <h2 className="mt-4 text-4xl font-semibold tracking-[-.06em] md:text-5xl">
+              Todo claro antes de empezar.
+            </h2>
+            <p className="mt-5 leading-7 text-[var(--muted)]">
+              Empiezas con una prueba de 3 días. Puedes cancelar cuando quieras y solo conectas lo
+              que corresponda a la persona que has elegido.
+            </p>
+            <Link href="#recomendar" className="mt-8 inline-flex items-center gap-2 text-sm font-semibold underline underline-offset-4">
+              Recibir una recomendación <ArrowRight size={15} />
+            </Link>
+          </div>
+          <div className="grid gap-3">
+            {[
+              ['¿Cuánto tarda en empezar?', 'La incorporación es guiada. El tiempo depende de la información y de la conexión que necesite cada empleado.'],
+              ['¿Tengo permanencia?', 'No. Puedes revisar tu contratación desde tu espacio privado.'],
+              ['¿Mis datos se mezclan con otras empresas?', 'No. Tu empresa trabaja en un espacio privado y separado.'],
+              ['¿Puedo empezar por una sola persona?', 'Sí. Puedes contratar a Laura, David, Carlos, Elena o Marta de forma individual.'],
+            ].map(([question, answer]) => (
+              <article key={question} className="surface rounded-2xl p-5">
+                <h3 className="font-semibold">{question}</h3>
+                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{answer}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </Section>
 
       <section className="bg-[#111315] text-white dark:bg-[#ccff00] dark:text-[#111315]">
         <Section>
@@ -372,7 +405,16 @@ function EmployeeCard({ employee }: { employee: (typeof employeeShowcase)[number
         </div>
         <p className="eyebrow mt-5">{employee.role}</p>
         <h3 className="mt-2 text-2xl font-semibold tracking-[-.05em]">{employee.name}</h3>
+        <p className="mt-1 text-sm font-medium text-[#789500]">{employee.person} · {employee.specialty}</p>
         <p className="mt-3 min-h-20 text-sm leading-6 text-[var(--muted)]">{employee.summary}</p>
+        <Link
+          href={`/empleados/${employee.slug}`}
+          data-e24-track={`employee_detail_${employee.slug}`}
+          data-e24-zone="employee_card"
+          className="mt-3 inline-flex items-center gap-1 text-sm font-semibold underline underline-offset-4"
+        >
+          Conocer a {employee.person} <ArrowRight size={14} />
+        </Link>
         <ul className="mt-6 grid gap-2 text-sm">
           {employee.benefits.slice(0, 3).map((benefit) => (
             <li className="flex gap-2" key={benefit}>
@@ -381,19 +423,24 @@ function EmployeeCard({ employee }: { employee: (typeof employeeShowcase)[number
             </li>
           ))}
         </ul>
-        <div className="mt-6 rounded-2xl bg-[#efffcf] px-4 py-3 text-xs font-medium text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]">
-          Función preparada para {employee.specialty.toLowerCase()}.
+        <div className="mt-6 grid grid-cols-2 gap-2 text-xs">
+          <span className="rounded-xl bg-[#efffcf] px-3 py-2 font-medium text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]">
+            {employee.languages.join(' · ')}
+          </span>
+          <span className="rounded-xl bg-black/[.04] px-3 py-2 font-medium text-[var(--muted)] dark:bg-white/[.06]">
+            {employee.department}
+          </span>
         </div>
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-5">
           <span className="text-xl font-semibold">{employee.price}</span>
           <div className="flex gap-2">
             <Link
-              href={`/empleados/${employee.slug}`}
-              data-e24-track={`employee_detail_${employee.slug}`}
+              href={`/demo?employee=${employee.slug}`}
+              data-e24-track={`employee_demo_${employee.slug}`}
               data-e24-zone="employee_card"
               className="rounded-full border border-[var(--line)] px-3 py-2 text-sm font-semibold"
             >
-              Ver más
+              Probar gratis
             </Link>
             <Link
               href={hiringHref(employee)}
@@ -408,6 +455,182 @@ function EmployeeCard({ employee }: { employee: (typeof employeeShowcase)[number
         </div>
       </div>
     </motion.article>
+  );
+}
+
+const recommendations = {
+  llamadas: ['recepcionista-ia', 'closer-ia'],
+  whatsapp: ['whatsapp-ia', 'closer-ia'],
+  ventas: ['closer-ia', 'especialista-presupuestos-ia'],
+  clientes: ['especialista-email-ia', 'whatsapp-ia'],
+  presupuestos: ['especialista-presupuestos-ia', 'closer-ia'],
+} as const;
+
+function HiringQuiz() {
+  const [business, setBusiness] = useState('');
+  const [problem, setProblem] = useState<keyof typeof recommendations | ''>('');
+  const [size, setSize] = useState('');
+  const ready = Boolean(business && problem && size);
+  const selectedProblem = (problem || 'llamadas') as keyof typeof recommendations;
+  const people = ready
+    ? recommendations[selectedProblem]
+        .map((slug: string) => employeeShowcase.find((employee) => employee.slug === slug))
+        .filter(Boolean)
+    : [];
+  const first = people[0];
+
+  return (
+    <div className="grid gap-10 lg:grid-cols-[.72fr_1.28fr] lg:items-center">
+      <div>
+        <p className="eyebrow text-white/55">Una recomendación en menos de un minuto</p>
+        <h2 className="mt-4 text-4xl font-semibold tracking-[-.065em] text-white md:text-6xl">
+          Dinos qué te preocupa. Te presentamos a la persona adecuada.
+        </h2>
+        <p className="mt-5 max-w-xl text-lg leading-8 text-white/65">
+          Tres preguntas. Sin datos de contacto. Sin compromiso.
+        </p>
+      </div>
+      <div className="rounded-[2rem] bg-white p-5 text-[#111315] shadow-2xl sm:p-7">
+        <QuizQuestion
+          number="01"
+          title="¿Qué tipo de negocio tienes?"
+          value={business}
+          onChange={setBusiness}
+          options={['Constructora', 'Inmobiliaria', 'Clínica', 'Restaurante', 'Despacho', 'Otro']}
+          tracking="quiz_business"
+        />
+        <QuizQuestion
+          number="02"
+          title="¿Cuál es el problema que más te frena?"
+          value={problem}
+          onChange={(value) => setProblem(value as keyof typeof recommendations)}
+          options={[
+            ['llamadas', 'Muchas llamadas'],
+            ['whatsapp', 'Muchos WhatsApp'],
+            ['ventas', 'No cierro ventas'],
+            ['clientes', 'Pierdo clientes'],
+            ['presupuestos', 'Hago presupuestos'],
+          ]}
+          tracking="quiz_problem"
+        />
+        <QuizQuestion
+          number="03"
+          title="¿Cuántas personas trabajan contigo?"
+          value={size}
+          onChange={setSize}
+          options={['Solo yo', '2–5 personas', '6–20 personas', 'Más de 20']}
+          tracking="quiz_size"
+        />
+        {ready && first ? (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-7 rounded-2xl bg-[#efffcf] p-5"
+          >
+            <p className="text-sm font-semibold text-[#486500]">Tu equipo recomendado</p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {people.map((employee) =>
+                employee ? (
+                  <span key={employee.slug} className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-sm font-semibold shadow-sm">
+                    <EmployeeAvatar portrait={employee.portrait} name={employee.person} objectPosition={employee.portraitPosition} className="h-7 w-7 rounded-full" />
+                    {employee.person}
+                  </span>
+                ) : null,
+              )}
+            </div>
+            <p className="mt-4 text-sm leading-6 text-[#486500]">
+              Empieza por {first.person}. Puedes incorporar al resto cuando lo necesites.
+            </p>
+            <Link
+              href={hiringHref(first)}
+              data-e24-track={`quiz_contract_${first.slug}`}
+              data-e24-zone="hiring_quiz"
+              className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#111315] px-5 py-3 text-sm font-semibold text-white"
+            >
+              Contratar mi recomendación <ArrowRight size={15} />
+            </Link>
+          </motion.div>
+        ) : (
+          <p className="mt-7 rounded-2xl bg-[#f4f5f0] px-4 py-3 text-sm text-[#626560]">
+            Responde las tres preguntas para ver tu recomendación.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function QuizQuestion({
+  number,
+  title,
+  value,
+  onChange,
+  options,
+  tracking,
+}: {
+  number: string;
+  title: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: Array<string | [string, string]>;
+  tracking: string;
+}) {
+  return (
+    <fieldset className="mt-6 first:mt-0">
+      <legend className="flex items-baseline gap-3 text-sm font-semibold">
+        <span className="font-mono text-xs text-[#789500]">{number}</span>
+        {title}
+      </legend>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {options.map((option) => {
+          const optionValue = Array.isArray(option) ? option[0] : option;
+          const label = Array.isArray(option) ? option[1] : option;
+          const selected = value === optionValue;
+          return (
+            <button
+              key={optionValue}
+              type="button"
+              onClick={() => onChange(optionValue)}
+              data-e24-track={`${tracking}_${optionValue.toLowerCase().replaceAll(' ', '_')}`}
+              data-e24-zone="hiring_quiz"
+              className={`rounded-full border px-3 py-2 text-sm transition ${selected ? 'border-[#789500] bg-[#efffcf] font-semibold text-[#486500]' : 'border-[#deded8] bg-white hover:border-[#789500]'}`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
+function CostComparison() {
+  const rows = [
+    ['Laura', 'Recepcionista IA', '≈ 36.000 €/año', '1.164 €/año', '≈ 34.836 €/año'],
+    ['Carlos', 'Closer IA', '≈ 46.000 €/año', '2.364 €/año', '≈ 43.636 €/año'],
+    ['Marta', 'Presupuestos IA', '≈ 42.000 €/año', '2.364 €/año', '≈ 39.636 €/año'],
+    ['Elena', 'WhatsApp IA', '≈ 34.000 €/año', '1.164 €/año', '≈ 32.836 €/año'],
+  ];
+  return (
+    <div className="mt-12 overflow-hidden rounded-[2rem] border border-[var(--line)] bg-[var(--card)]">
+      <div className="grid grid-cols-[1.25fr_.85fr_.85fr] gap-3 bg-[#111315] px-5 py-4 text-xs font-semibold text-white sm:grid-cols-[1.25fr_.85fr_.85fr_1fr] sm:px-7 sm:text-sm">
+        <span>Persona</span>
+        <span>Coste humano*</span>
+        <span className="text-[#ccff00]">Empleado24</span>
+        <span className="hidden sm:block">Ahorro orientativo</span>
+      </div>
+      {rows.map(([person, role, human, ai, saving]) => (
+        <div key={person} className="grid grid-cols-[1.25fr_.85fr_.85fr] gap-3 border-t border-[var(--line)] px-5 py-5 text-xs sm:grid-cols-[1.25fr_.85fr_.85fr_1fr] sm:px-7 sm:text-sm">
+          <span><b className="block text-base">{person}</b><span className="text-[var(--muted)]">{role}</span></span>
+          <span className="text-[var(--muted)]">{human}</span>
+          <span className="font-semibold">{ai}</span>
+          <span className="hidden font-semibold text-[#6e8700] sm:block">{saving}</span>
+        </div>
+      ))}
+      <p className="border-t border-[var(--line)] px-5 py-4 text-xs leading-5 text-[var(--muted)] sm:px-7">
+        *Comparación anual orientativa que incluye salario y costes habituales de contratación. No es una promesa de ahorro ni sustituye el cálculo laboral de tu empresa.
+      </p>
+    </div>
   );
 }
 

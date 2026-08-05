@@ -26,6 +26,9 @@ const answers = [
 export function HelpCenter({ context }: { context?: CopilotContext }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [salesStep, setSalesStep] = useState(0);
+  const [salesProblem, setSalesProblem] = useState('');
+  const isPublic = !context;
   const results = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return answers.slice(0, 3);
@@ -40,11 +43,48 @@ export function HelpCenter({ context }: { context?: CopilotContext }) {
     : { text: 'Tu equipo está conectado. Revisa la actividad para decidir su siguiente acción.', href: '/app#jornada', action: 'Ver actividad' };
   return <>
     {open && <aside className="fixed bottom-24 right-4 z-[60] w-[min(92vw,380px)] rounded-3xl border border-[var(--line)] bg-[var(--card)] p-5 text-[var(--fg)] shadow-2xl" aria-label="Experto Empleado24">
-      <div className="flex items-start justify-between gap-3"><div><p className="eyebrow">Tu copiloto</p><h2 className="mt-1 text-lg font-semibold">Experto Empleado24</h2><p className="mt-1 text-sm text-[var(--muted)]">Te acompaño paso a paso.</p></div><button className="grid h-8 w-8 place-items-center rounded-full border border-[var(--line)]" aria-label="Cerrar ayuda" onClick={() => setOpen(false)}><X size={16} /></button></div>
+      <div className="flex items-start justify-between gap-3"><div><p className="eyebrow">{isPublic ? 'Tu incorporación' : 'Tu copiloto'}</p><h2 className="mt-1 text-lg font-semibold">{isPublic ? 'Encuentra a la persona adecuada' : 'Experto Empleado24'}</h2><p className="mt-1 text-sm text-[var(--muted)]">{isPublic ? 'Te hago tres preguntas y te recomiendo por dónde empezar.' : 'Te acompaño paso a paso.'}</p></div><button className="grid h-8 w-8 place-items-center rounded-full border border-[var(--line)]" aria-label="Cerrar ayuda" onClick={() => setOpen(false)}><X size={16} /></button></div>
+      {isPublic && <SalesGuide step={salesStep} setStep={setSalesStep} problem={salesProblem} setProblem={setSalesProblem} />}
       {recommendation && <article className="mt-4 rounded-2xl bg-[#efffcf] p-4 text-sm text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]"><p className="font-semibold">¿Qué deberías hacer ahora?</p><p className="mt-1 leading-5">{recommendation.text}</p><a href={recommendation.href} className="mt-3 inline-block font-semibold underline underline-offset-4">{recommendation.action}</a></article>}
-      <label className="mt-4 block text-sm"><span className="sr-only">¿En qué necesitas ayuda?</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="¿Qué quieres hacer?" className="w-full rounded-xl border border-[var(--line)] bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-[#ccff00]" /></label>
+      <label className="mt-4 block text-sm"><span className="sr-only">¿En qué necesitas ayuda?</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={isPublic ? 'O escribe una pregunta' : '¿Qué quieres hacer?'} className="w-full rounded-xl border border-[var(--line)] bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-[#ccff00]" /></label>
       <div className="mt-4 space-y-3">{results.length ? results.map((result) => <article key={result.title} className="rounded-2xl bg-[var(--bg)] p-3"><p className="text-sm font-semibold">{result.title}</p><p className="mt-1 text-xs leading-5 text-[var(--muted)]">{result.text}</p></article>) : <p className="rounded-2xl bg-[var(--bg)] p-3 text-sm text-[var(--muted)]">No he encontrado una respuesta. <a className="font-semibold text-[#789500] underline" href="mailto:proyectoseconomicosexclusivos@gmail.com?subject=Ayuda%20con%20Empleado24">Pedir ayuda al equipo</a>.</p>}</div>
     </aside>}
-    <button onClick={() => setOpen((value) => !value)} className="fixed bottom-5 right-4 z-[60] inline-flex items-center gap-2 rounded-full bg-[#ccff00] px-4 py-3 text-sm font-semibold text-[#111315] shadow-lg" aria-label="Abrir Experto Empleado24"><MessageCircle size={17} /><span className="hidden sm:inline">Experto Empleado24</span><HelpCircle size={16} /></button>
+    <button onClick={() => setOpen((value) => !value)} data-e24-track="copilot_open" data-e24-zone="public_copilot" className="fixed bottom-5 right-4 z-[60] inline-flex items-center gap-2 rounded-full bg-[#ccff00] px-4 py-3 text-sm font-semibold text-[#111315] shadow-lg" aria-label="Abrir Experto Empleado24"><MessageCircle size={17} /><span className="hidden sm:inline">{isPublic ? 'Encontrar mi empleado' : 'Experto Empleado24'}</span><HelpCircle size={16} /></button>
   </>;
+}
+
+function SalesGuide({
+  step,
+  setStep,
+  problem,
+  setProblem,
+}: {
+  step: number;
+  setStep: (value: number) => void;
+  problem: string;
+  setProblem: (value: string) => void;
+}) {
+  const plans: Record<string, { person: string; job: string; href: string }> = {
+    llamadas: { person: 'Laura', job: 'Recepcionista IA', href: '/register?employee=one_employee&from=public_copilot' },
+    whatsapp: { person: 'Elena', job: 'WhatsApp IA', href: '/register?employee=employee_whatsapp&from=public_copilot' },
+    ventas: { person: 'Carlos', job: 'Closer IA', href: '/register?employee=employee_closer&from=public_copilot' },
+    clientes: { person: 'David', job: 'Especialista Email IA', href: '/register?employee=employee_email&from=public_copilot' },
+    presupuestos: { person: 'Marta', job: 'Especialista Presupuestos IA', href: '/register?employee=employee_budget&from=public_copilot' },
+  };
+  if (step === 3) {
+    const plan = plans[problem] ?? { person: 'Laura', job: 'Recepcionista IA', href: '/register?employee=one_employee&from=public_copilot' };
+    return <article className="mt-5 rounded-2xl bg-[#efffcf] p-4 text-sm text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]">
+      <p className="font-semibold">Te recomendamos empezar con {plan.person}.</p>
+      <p className="mt-1 leading-5">{plan.job}. Puedes conocerle antes o iniciar su incorporación ahora.</p>
+      <a href={plan.href} data-e24-track={`copilot_contract_${problem || 'default'}`} data-e24-zone="public_copilot" className="mt-3 inline-block font-semibold underline underline-offset-4">Contratar a {plan.person}</a>
+      <button type="button" onClick={() => { setStep(0); setProblem(''); }} className="ml-4 text-xs font-semibold underline underline-offset-4">Empezar de nuevo</button>
+    </article>;
+  }
+  if (step === 2) {
+    return <article className="mt-5 rounded-2xl bg-[var(--bg)] p-4"><p className="text-sm font-semibold">¿Cuál es tu mayor problema ahora?</p><div className="mt-3 flex flex-wrap gap-2">{[['llamadas', 'Muchas llamadas'], ['whatsapp', 'Muchos WhatsApp'], ['ventas', 'No cierro ventas'], ['clientes', 'Pierdo clientes'], ['presupuestos', 'Hago presupuestos']].map(([value, label]) => <button key={value} type="button" data-e24-track={`copilot_problem_${value}`} data-e24-zone="public_copilot" onClick={() => { setProblem(value ?? ''); setStep(3); }} className="rounded-full border border-[var(--line)] px-3 py-2 text-xs font-medium hover:border-[#789500]">{label}</button>)}</div></article>;
+  }
+  if (step === 1) {
+    return <article className="mt-5 rounded-2xl bg-[var(--bg)] p-4"><p className="text-sm font-semibold">¿Cuántas personas trabajan contigo?</p><div className="mt-3 flex flex-wrap gap-2">{['Solo yo', '2–5 personas', '6–20 personas', 'Más de 20'].map((option) => <button key={option} type="button" data-e24-track={`copilot_size_${option.toLowerCase().replaceAll(' ', '_')}`} data-e24-zone="public_copilot" onClick={() => setStep(2)} className="rounded-full border border-[var(--line)] px-3 py-2 text-xs font-medium hover:border-[#789500]">{option}</button>)}</div></article>;
+  }
+  return <article className="mt-5 rounded-2xl bg-[var(--bg)] p-4"><p className="text-sm font-semibold">¿Qué tipo de negocio tienes?</p><div className="mt-3 flex flex-wrap gap-2">{['Constructora', 'Inmobiliaria', 'Clínica', 'Restaurante', 'Despacho', 'Otro'].map((option) => <button key={option} type="button" data-e24-track={`copilot_business_${option.toLowerCase().replaceAll(' ', '_')}`} data-e24-zone="public_copilot" onClick={() => setStep(1)} className="rounded-full border border-[var(--line)] px-3 py-2 text-xs font-medium hover:border-[#789500]">{option}</button>)}</div></article>;
 }
