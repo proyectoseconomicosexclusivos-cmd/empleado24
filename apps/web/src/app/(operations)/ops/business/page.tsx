@@ -105,6 +105,7 @@ export default async function BusinessPage() {
     { data: invoices },
     { data: purchases },
     { data: guardian },
+    { data: lauraLeadData },
   ] = await Promise.all([
     admin
       .from('business_events')
@@ -117,6 +118,7 @@ export default async function BusinessPage() {
     admin.from('invoices').select('company_id,amount_paid_cents,status,paid_at,created_at').eq('status', 'paid').order('created_at', { ascending: false }).limit(5_000),
     admin.from('prepaid_minute_purchases').select('company_id,amount_minor,status,created_at').eq('status', 'paid').order('created_at', { ascending: false }).limit(5_000),
     admin.from('release_guardian_runs').select('status,started_at,results').order('started_at', { ascending: false }).limit(1).maybeSingle(),
+    admin.from('sales_assistant_leads').select('id,registered_user_id,registered_company_id,checkout_started_at,payment_completed_at,created_at').gte('created_at', last30d.toISOString()).order('created_at', { ascending: false }).limit(5_000),
   ]);
 
   const events = (eventData ?? []) as EventRow[];
@@ -187,6 +189,12 @@ export default async function BusinessPage() {
       return result;
     }, new Map<string, number>());
   const latestGuardian = guardian as { status?: string; started_at?: string } | null;
+  const lauraLeads = (lauraLeadData ?? []) as Array<{ id: string; registered_user_id: string | null; registered_company_id: string | null; checkout_started_at: string | null; payment_completed_at: string | null; created_at: string }>;
+  const lauraConversationsStarted = events.filter((event) => event.metadata?.action === 'laura_conversation_started').length;
+  const lauraConversationsCompleted = events.filter((event) => event.metadata?.action === 'laura_conversation_completed').length;
+  const lauraRegistrations = lauraLeads.filter((lead) => Boolean(lead.registered_user_id)).length;
+  const lauraCheckouts = lauraLeads.filter((lead) => Boolean(lead.checkout_started_at)).length;
+  const lauraSales = lauraLeads.filter((lead) => Boolean(lead.payment_completed_at)).length;
 
   return (
     <main className="px-5 py-8 md:px-8 md:py-10">
@@ -227,6 +235,12 @@ export default async function BusinessPage() {
         <Metric label="Ingresos cobrados · mes" value={money(revenueThisMonth)} />
         <Metric label="Clientes de pago" value={String(active.length)} />
         <Metric label="Primeros accesos" value={String(logins.length)} />
+        <Metric label="Conversaciones con Laura" value={String(lauraConversationsStarted)} />
+        <Metric label="Conversaciones completadas" value={String(lauraConversationsCompleted)} />
+        <Metric label="Leads de Laura" value={String(lauraLeads.length)} />
+        <Metric label="Registros desde Laura" value={String(lauraRegistrations)} />
+        <Metric label="Checkout desde Laura" value={String(lauraCheckouts)} />
+        <Metric label="Ventas desde Laura" value={String(lauraSales)} />
       </section>
 
       <section className="mt-10 grid gap-4 lg:grid-cols-2">

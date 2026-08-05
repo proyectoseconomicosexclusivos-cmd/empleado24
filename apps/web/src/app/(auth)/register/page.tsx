@@ -35,6 +35,7 @@ function RegisterForm() {
         name: String(formData.get('name')),
         email: String(formData.get('email')),
         password: String(formData.get('password')),
+        lauraLeadToken: searchParams.get('laura'),
       }),
     });
     const data = (await response.json().catch(() => ({}))) as {
@@ -114,62 +115,26 @@ function RegisterForm() {
             <label className="text-sm font-medium" htmlFor="name">
               ¿Cómo te llamas?
             </label>
-            <input
-              id="name"
-              name="name"
-              autoComplete="name"
-              required
-              placeholder="Tu nombre"
-              className="input mt-2"
-            />
+            <input id="name" name="name" autoComplete="name" required placeholder="Tu nombre" className="input mt-2" />
             <label className="mt-5 block text-sm font-medium" htmlFor="email">
               Tu email de trabajo
             </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              placeholder="tu@empresa.com"
-              className="input mt-2"
-            />
+            <input id="email" name="email" type="email" autoComplete="email" required placeholder="tu@empresa.com" className="input mt-2" />
             <label className="mt-5 block text-sm font-medium" htmlFor="password">
               Crea una contraseña
             </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              minLength={8}
-              required
-              placeholder="Mínimo 8 caracteres"
-              className="input mt-2"
-            />
-            <button
-              data-e24-track="register_started"
-              data-e24-zone="registration"
-              disabled={pending}
-              className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#ccff00] p-3 font-semibold text-[#111315] transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
-            >
-              {pending ? 'Preparando la bienvenida…' : 'Empezar la contratación'}{' '}
-              <ArrowRight size={16} aria-hidden="true" />
+            <input id="password" name="password" type="password" autoComplete="new-password" minLength={8} required placeholder="Mínimo 8 caracteres" className="input mt-2" />
+            <button data-e24-track="register_started" data-e24-zone="registration" disabled={pending} className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#ccff00] p-3 font-semibold text-[#111315] transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60">
+              {pending ? 'Preparando la bienvenida…' : 'Empezar la contratación'} <ArrowRight size={16} aria-hidden="true" />
             </button>
             {message && (
-              <p
-                role={isError ? 'alert' : 'status'}
-                className={`mt-5 rounded-xl p-4 text-sm ${isError ? 'bg-[#fff0eb] text-[#7b3c2b] dark:bg-[#3c211a] dark:text-[#ffc9b8]' : 'bg-[#efffcf] text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]'}`}
-              >
+              <p role={isError ? 'alert' : 'status'} className={`mt-5 rounded-xl p-4 text-sm ${isError ? 'bg-[#fff0eb] text-[#7b3c2b] dark:bg-[#3c211a] dark:text-[#ffc9b8]' : 'bg-[#efffcf] text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]'}`}>
                 {message}
               </p>
             )}
           </form>
           <p className="mt-7 text-sm text-[var(--muted)]">
-            ¿Ya forma parte de tu equipo?{' '}
-            <Link href="/login" className="font-medium text-[var(--fg)]">
-              Entrar en tu empresa
-            </Link>
+            ¿Ya forma parte de tu equipo? <Link href="/login" className="font-medium text-[var(--fg)]">Entrar en tu empresa</Link>
           </p>
         </div>
       </section>
