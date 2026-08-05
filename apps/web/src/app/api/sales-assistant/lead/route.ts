@@ -33,6 +33,7 @@ export async function POST(request: Request) {
   const roiSnapshot = body?.roiSnapshot && typeof body.roiSnapshot === 'object' && !Array.isArray(body.roiSnapshot)
     ? body.roiSnapshot as Record<string, unknown>
     : {};
+  const contactConsent = body?.contactConsent === true;
 
   if (name.length < 2 || !targetEmail || companyName.length < 2 || !idempotencyKey)
     return NextResponse.json({ error: 'invalid_lead' }, { status: 400 });
@@ -72,6 +73,8 @@ export async function POST(request: Request) {
     fbclid: text(body?.fbclid, 300) || null,
     commercial_state: 'READY_TO_BUY',
     roi_snapshot: roiSnapshot,
+    contact_consent_at: contactConsent ? new Date().toISOString() : null,
+    contact_consent_source: contactConsent ? 'laura_lead_form' : null,
   };
   const { data, error } = await admin
     .from('sales_assistant_leads')
@@ -105,7 +108,7 @@ export async function POST(request: Request) {
     sessionId,
     source: 'laura_sales_assistant',
     idempotencyKey: `laura:lead:${idempotencyKey}`,
-    metadata: { assistant: 'laura', recommendation, sector: lead.sector, primary_problem: lead.primary_problem },
+    metadata: { assistant: 'laura', recommendation, sector: lead.sector, primary_problem: lead.primary_problem, contact_consent: contactConsent },
     utm: {
       source: lead.utm_source,
       medium: lead.utm_medium,
