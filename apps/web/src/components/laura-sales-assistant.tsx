@@ -162,7 +162,7 @@ export function LauraSalesAssistant() {
     const demoTimer = window.setTimeout(() => { setNudge('demo'); analytics('laura_demo_offer', 'two_minutes', 'demo_offer'); }, 120_000);
     const trialTimer = window.setTimeout(() => { setNudge('trial'); analytics('laura_trial_offer', 'four_minutes', 'trial_offer'); }, 240_000);
     return () => { window.clearTimeout(demoTimer); window.clearTimeout(trialTimer); };
-  }, [visible, step]);
+  }, [visible]);
 
   function start() {
     setExitCopy(false);
