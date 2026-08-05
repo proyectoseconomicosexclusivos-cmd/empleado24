@@ -72,6 +72,15 @@ jobs:
             fi
 
             previous_image="$(docker inspect --format='{{.Config.Image}}' "$current_container")"
+
+            # Preserve the running release for rollback, then discard only Docker
+            # objects not referenced by a running container. Volumes are never pruned.
+            echo "DISK: reclaiming unused Docker objects"
+            docker container prune --force
+            docker image prune --all --force
+            docker builder prune --all --force
+            df -h / /var/lib/docker || true
+
             release_image="ghcr.io/${{ github.repository }}:${{ github.sha }}"
 
             echo "DEPLOY: previous image $previous_image"
