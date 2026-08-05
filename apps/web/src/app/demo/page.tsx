@@ -4,5 +4,89 @@ import { EmployeeAvatar } from '@/components/employee-avatar';
 import { employeeShowcase, hiringHref } from '@/lib/employee-showcase';
 
 export default function DemoPage() {
-  return <main className="min-h-screen bg-[var(--bg)]"><header className="border-b border-[var(--line)]"><div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-6 md:px-10"><Link href="/" className="text-lg font-bold tracking-[-.07em]">EMPLEADO<span className="text-[#789500]">24</span></Link><Link href="/#empleados" className="text-sm font-semibold">Conocer empleados</Link></div></header><section className="mx-auto max-w-6xl px-5 py-16 sm:px-6 md:px-10"><p className="eyebrow">DEMO</p><h1 className="mt-4 max-w-4xl text-5xl font-semibold tracking-[-.07em] md:text-7xl">Conversa con tu futuro equipo.</h1><p className="mt-6 max-w-2xl text-lg leading-8 text-[var(--muted)]">Esta demostración muestra ejemplos de trabajo. No representa actividad real de ninguna empresa.</p><div className="mt-12 grid gap-5 lg:grid-cols-2">{employeeShowcase.map((employee) => <article key={employee.slug} className="surface rounded-[2rem] p-6"><div className="flex items-center gap-4"><EmployeeAvatar portrait={employee.portrait} name={employee.person} className="h-16 w-16"/><div><p className="text-2xl font-semibold">{employee.person}</p><p className="text-sm text-[#789500]">{employee.name}</p></div></div><p className="mt-6 text-sm leading-6 text-[var(--muted)]">“{employee.personalIntro}”</p><div className="mt-6 rounded-2xl bg-[#111315] p-5 text-white"><div className="flex items-center gap-2 text-[#ccff00]"><PlayCircle size={17}/><span className="text-xs font-semibold uppercase tracking-[.12em]">DEMO · Jornada de ejemplo</span></div><p className="mt-4 font-medium">{employee.examples[0]}</p><div className="mt-4 flex items-center gap-2 text-sm text-white/65"><CheckCircle2 className="text-[#ccff00]" size={16}/>Ejemplo de actividad en el historial del cliente</div><div className="mt-2 flex items-center gap-2 text-sm text-white/65"><Sparkles className="text-[#ccff00]" size={16}/>Ejemplo de siguiente acción para el equipo</div></div><div className="mt-6 flex gap-3"><Link href={`/empleados/${employee.slug}`} className="rounded-full border border-[var(--line)] px-4 py-2 text-sm font-semibold">Ver su ficha</Link><Link href={hiringHref(employee)} className="inline-flex items-center gap-1 rounded-full bg-[#111315] px-4 py-2 text-sm font-semibold text-white dark:bg-[#ccff00] dark:text-[#111315]">Contratar <ArrowRight size={14}/></Link></div></article>)}</div></section></main>;
+  return (
+    <main className="min-h-screen bg-[var(--bg)]">
+      <header className="border-b border-[var(--line)]">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-6 md:px-10">
+          <Link href="/" className="text-lg font-bold tracking-[-.07em]">
+            EMPLEADO<span className="text-[#789500]">24</span>
+          </Link>
+          <Link
+            href="/#empleados"
+            data-e24-track="demo_employees"
+            data-e24-zone="demo_navigation"
+            className="text-sm font-semibold"
+          >
+            Conocer empleados
+          </Link>
+        </div>
+      </header>
+      <section className="mx-auto max-w-6xl px-5 py-16 sm:px-6 md:px-10">
+        <p className="eyebrow">DEMO</p>
+        <h1 className="mt-4 max-w-4xl text-5xl font-semibold tracking-[-.07em] md:text-7xl">
+          Mira a Laura y al equipo trabajar.
+        </h1>
+        <p className="mt-6 max-w-2xl text-lg leading-8 text-[var(--muted)]">
+          En menos de diez segundos puedes ver cómo responde cada empleado. Son ejemplos guiados: no
+          representan actividad real de ninguna empresa.
+        </p>
+        <div className="mt-12 grid gap-5 lg:grid-cols-2">
+          {employeeShowcase.map((employee) => (
+            <article key={employee.slug} className="surface rounded-[2rem] p-6">
+              <div className="flex items-center gap-4">
+                <EmployeeAvatar
+                  portrait={employee.portrait}
+                  name={employee.person}
+                  objectPosition={employee.portraitPosition}
+                  className="h-16 w-16"
+                />
+                <div>
+                  <p className="text-2xl font-semibold">{employee.person}</p>
+                  <p className="text-sm text-[#789500]">{employee.name}</p>
+                </div>
+              </div>
+              <p className="mt-6 text-sm leading-6 text-[var(--muted)]">
+                “{employee.personalIntro}”
+              </p>
+              <div className="mt-6 rounded-2xl bg-[#111315] p-5 text-white">
+                <div className="flex items-center gap-2 text-[#ccff00]">
+                  <PlayCircle size={17} />
+                  <span className="text-xs font-semibold uppercase tracking-[.12em]">
+                    DEMO · Jornada de ejemplo
+                  </span>
+                </div>
+                <p className="mt-4 font-medium">{employee.examples[0]}</p>
+                <div className="mt-4 flex items-center gap-2 text-sm text-white/65">
+                  <CheckCircle2 className="text-[#ccff00]" size={16} />
+                  Ejemplo de actividad en el historial del cliente
+                </div>
+                <div className="mt-2 flex items-center gap-2 text-sm text-white/65">
+                  <Sparkles className="text-[#ccff00]" size={16} />
+                  Ejemplo de siguiente acción para el equipo
+                </div>
+              </div>
+              <div className="mt-6 flex gap-3">
+                <Link
+                  href={`/empleados/${employee.slug}`}
+                  data-e24-track={`demo_detail_${employee.slug}`}
+                  data-e24-zone="demo_card"
+                  className="rounded-full border border-[var(--line)] px-4 py-2 text-sm font-semibold"
+                >
+                  Ver su ficha
+                </Link>
+                <Link
+                  href={hiringHref(employee)}
+                  data-e24-track={`demo_contract_${employee.slug}`}
+                  data-e24-zone="demo_card"
+                  className="inline-flex items-center gap-1 rounded-full bg-[#111315] px-4 py-2 text-sm font-semibold text-white dark:bg-[#ccff00] dark:text-[#111315]"
+                >
+                  Contratar <ArrowRight size={14} />
+                </Link>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    </main>
+  );
 }

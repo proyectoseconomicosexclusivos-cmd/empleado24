@@ -53,7 +53,12 @@ export default function Home() {
           </nav>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Link href="#empleados" className={buttonVariants({ variant: 'lime' })}>
+            <Link
+              href="#empleados"
+              data-e24-track="nav_contract"
+              data-e24-zone="navigation"
+              className={buttonVariants({ variant: 'lime' })}
+            >
               Contratar <ArrowRight size={15} />
             </Link>
           </div>
@@ -70,18 +75,29 @@ export default function Home() {
                 Tu equipo puede crecer hoy
               </span>
               <h1 className="mt-7 text-5xl font-semibold tracking-[-.075em] sm:text-6xl md:text-7xl">
-                Contrata empleados con IA desde 97 €/mes.
+                <span className="block">CONTRATA EMPLEADOS IA</span>
+                <span className="block text-[#789500]">DESDE 97 €/MES</span>
               </h1>
               <p className="mt-7 max-w-2xl text-lg leading-8 text-[var(--muted)]">
                 Elige la función que necesitas y suma a tu empresa alguien preparado para atender,
                 organizar y hacer seguimiento cada día.
               </p>
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                <Link href="#empleados" className={buttonVariants({ variant: 'lime' })}>
-                  Conocer al equipo <ArrowRight size={16} />
+                <Link
+                  href="#empleados"
+                  data-e24-track="hero_contract"
+                  data-e24-zone="hero"
+                  className={buttonVariants({ variant: 'lime' })}
+                >
+                  Contratar mi primer empleado <ArrowRight size={16} />
                 </Link>
-                <Link href="#packs" className={buttonVariants({ variant: 'outline' })}>
-                  Ver packs de equipo
+                <Link
+                  href="/demo?employee=recepcionista-ia"
+                  data-e24-track="hero_demo_laura"
+                  data-e24-zone="hero"
+                  className={buttonVariants({ variant: 'outline' })}
+                >
+                  Ver trabajar a Laura
                 </Link>
               </div>
               <div className="mt-9 flex flex-wrap gap-x-6 gap-y-3 text-sm text-[var(--muted)]">
@@ -333,6 +349,7 @@ function EmployeeCard({ employee }: { employee: (typeof employeeShowcase)[number
         <EmployeeAvatar
           portrait={employee.portrait}
           name={employee.person}
+          objectPosition={employee.portraitPosition}
           className="h-full w-full rounded-none transition duration-500 group-hover:scale-[1.03]"
         />
         <div className="absolute inset-x-3 bottom-3 flex items-end justify-between">
@@ -365,19 +382,23 @@ function EmployeeCard({ employee }: { employee: (typeof employeeShowcase)[number
           ))}
         </ul>
         <div className="mt-6 rounded-2xl bg-[#efffcf] px-4 py-3 text-xs font-medium text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]">
-        Función preparada para {employee.specialty.toLowerCase()}.
+          Función preparada para {employee.specialty.toLowerCase()}.
         </div>
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-5">
           <span className="text-xl font-semibold">{employee.price}</span>
           <div className="flex gap-2">
             <Link
               href={`/empleados/${employee.slug}`}
+              data-e24-track={`employee_detail_${employee.slug}`}
+              data-e24-zone="employee_card"
               className="rounded-full border border-[var(--line)] px-3 py-2 text-sm font-semibold"
             >
               Ver más
             </Link>
             <Link
               href={hiringHref(employee)}
+              data-e24-track={`employee_contract_${employee.slug}`}
+              data-e24-zone="employee_card"
               className="inline-flex items-center gap-1 rounded-full bg-[#111315] px-3 py-2 text-sm font-semibold text-white dark:bg-[#f4f5f0] dark:text-[#111315]"
             >
               Contratar
@@ -420,6 +441,7 @@ function OfficeDay() {
                   <EmployeeAvatar
                     portrait={employee.portrait}
                     name={employee.person}
+                    objectPosition={employee.portraitPosition}
                     className="h-10 w-10"
                   />
                 )}
@@ -429,6 +451,16 @@ function OfficeDay() {
           );
         })}
       </ol>
+      <div className="border-t border-[var(--line)] px-6 py-5">
+        <Link
+          href="/demo?employee=recepcionista-ia"
+          data-e24-track="office_demo_laura"
+          data-e24-zone="office_demo"
+          className="inline-flex items-center gap-2 text-sm font-semibold underline underline-offset-4"
+        >
+          Ver trabajar a Laura <ArrowRight size={15} />
+        </Link>
+      </div>
     </article>
   );
 }
@@ -475,6 +507,8 @@ function Pack({
         {href ? (
           <Link
             href={href}
+            data-e24-track={`pack_${name.toLowerCase().replaceAll(' ', '_')}`}
+            data-e24-zone="pack"
             className="inline-flex items-center gap-1 rounded-full bg-[#111315] px-4 py-2 text-sm font-semibold text-white dark:bg-[#f4f5f0] dark:text-[#111315]"
           >
             Conocer pack <ArrowRight size={14} />
@@ -518,6 +552,7 @@ function OrgChart() {
           <EmployeeAvatar
             portrait={selectedEmployee.portrait}
             name={selectedEmployee.person}
+            objectPosition={selectedEmployee.portraitPosition}
             className="h-14 w-14"
           />
           <div>
@@ -531,6 +566,8 @@ function OrgChart() {
         </p>
         <Link
           href={`/empleados/${selectedEmployee.slug}`}
+          data-e24-track={`orgchart_${selectedEmployee.slug}`}
+          data-e24-zone="org_chart"
           className="mt-5 inline-flex text-sm font-semibold underline underline-offset-4"
         >
           Conocer a {selectedEmployee.person}
@@ -554,7 +591,12 @@ function OrgNode({
       onClick={() => onSelect(employee.slug)}
       className={`flex items-center gap-3 rounded-2xl border bg-[var(--card)] p-3 text-left transition hover:-translate-y-0.5 hover:border-[#789500] ${selected ? 'border-[#789500] ring-2 ring-[#ccff00]/60' : 'border-[var(--line)]'}`}
     >
-      <EmployeeAvatar portrait={employee.portrait} name={employee.person} className="h-10 w-10" />
+      <EmployeeAvatar
+        portrait={employee.portrait}
+        name={employee.person}
+        objectPosition={employee.portraitPosition}
+        className="h-10 w-10"
+      />
       <span className="min-w-0">
         <b className="block truncate text-sm">{employee.person}</b>
         <span className="block truncate text-xs text-[var(--muted)]">{employee.name}</span>
@@ -581,6 +623,7 @@ function HeroTeam() {
             <EmployeeAvatar
               portrait={employee.portrait}
               name={employee.person}
+              objectPosition={employee.portraitPosition}
               className="h-11 w-11"
             />
             <div className="min-w-0 flex-1">

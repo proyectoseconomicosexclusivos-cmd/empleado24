@@ -15,6 +15,7 @@ export type EmployeeShowcase = {
   department: string;
   price: string;
   portrait: string;
+  portraitPosition?: string;
   summary: string;
   benefits: string[];
   does: string[];
@@ -42,6 +43,7 @@ export const employeeShowcase: EmployeeShowcase[] = [
     role: 'Atiende llamadas y organiza citas',
     price: '97 €/mes',
     portrait: '/employees/laura.jpg',
+    portraitPosition: '50% 22%',
     summary:
       'Recibe llamadas, resuelve las dudas habituales y deja a tu equipo las conversaciones que necesitan una persona.',
     benefits: ['Atiende cada llamada', 'Habla como tu empresa', 'Organiza citas'],
@@ -84,6 +86,7 @@ export const employeeShowcase: EmployeeShowcase[] = [
     role: 'Cuida el contacto con tus clientes',
     price: '97 €/mes',
     portrait: '/employees/david.jpg',
+    portraitPosition: '50% 24%',
     summary:
       'Prepara comunicaciones, organiza contactos y mantiene una conversación constante desde la cuenta de tu empresa.',
     benefits: ['Mensajes organizados', 'Contactos por empresa', 'Seguimiento claro'],
@@ -130,6 +133,7 @@ export const employeeShowcase: EmployeeShowcase[] = [
     role: 'Convierte interés en oportunidades',
     price: '197 €/mes',
     portrait: '/employees/carlos.jpg',
+    portraitPosition: '50% 20%',
     summary:
       'Da seguimiento a cada oportunidad, prioriza las más valiosas y ayuda a que ninguna conversación comercial se enfríe.',
     benefits: ['Seguimiento constante', 'Prioriza oportunidades', 'Centro de Ventas'],
@@ -173,6 +177,7 @@ export const employeeShowcase: EmployeeShowcase[] = [
     role: 'Atiende mensajes y detecta oportunidades',
     price: '97 €/mes',
     portrait: '/employees/elena.jpg',
+    portraitPosition: '50% 22%',
     summary:
       'Responde por WhatsApp, entiende cuándo hay interés comercial y pasa cada oportunidad al miembro adecuado del equipo.',
     benefits: ['Responde todos los días', 'Detecta interés', 'Pasa oportunidades'],
@@ -216,6 +221,7 @@ export const employeeShowcase: EmployeeShowcase[] = [
     role: 'Prepara presupuestos claros y rentables',
     price: '197 €/mes',
     portrait: '/employees/marta.jpg',
+    portraitPosition: '50% 22%',
     summary:
       'Organiza costes, márgenes y seguimientos para que prepares presupuestos consistentes sin empezar de cero.',
     benefits: ['Márgenes controlados', 'Historial por cliente', 'Seguimiento preparado'],
