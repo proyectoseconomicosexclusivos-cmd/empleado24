@@ -4,10 +4,12 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import type { Json } from '@empleado24/types';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { headers } from 'next/headers';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { notifyOwner } from '@/lib/owner-notifications';
 import { recordBusinessEvent } from '@/lib/business-events';
+import { getCustomer, publishEvent, saveMemory } from '@/lib/empleado24-brain';
 
 const locales = new Set(['es', 'en', 'pt', 'fr', 'it', 'de']);
 const currencies = new Set(['EUR', 'USD', 'GBP', 'MXN', 'BRL']);
@@ -73,6 +75,38 @@ export async function completeOnboarding(formData: FormData) {
     recordBusinessEvent({ eventName: 'company_created', companyId, userId: auth.user.id, source: 'onboarding', idempotencyKey: `company-created:${companyId}` }),
     recordBusinessEvent({ eventName: 'employee_hired', companyId, userId: auth.user.id, source: 'onboarding', idempotencyKey: `employee-hired:onboarding:${companyId}` }),
   ]).catch(() => undefined);
+  // A public Laura conversation has no company while the visitor is anonymous.
+  // Once the visitor creates one, connect that commercial context to the
+  // existing Customer 360 without changing the Brain schema or checkout flow.
+  void (async () => {
+    const admin = createAdminClient() as any;
+    const { data: lead } = await admin.from('sales_assistant_leads')
+      .select('id,anonymous_id,name,email,company_name,sector,primary_problem,recommended_employees,roi_snapshot')
+      .eq('registered_user_id', auth.user.id)
+      .is('registered_company_id', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!lead) return;
+    await admin.from('sales_assistant_leads').update({
+      registered_company_id: companyId, commercial_state: 'INTERESTED', updated_at: new Date().toISOString(),
+    }).eq('id', lead.id);
+    if (lead.anonymous_id) await admin.from('sales_assistant_conversations').update({
+      commercial_state: 'INTERESTED', updated_at: new Date().toISOString(),
+    }).eq('anonymous_id', lead.anonymous_id);
+    const customer = await getCustomer({
+      companyId, name: lead.name, email: lead.email, companyName: lead.company_name, source: 'laura_sales_assistant',
+    });
+    await saveMemory({
+      companyId, customerId: customer.id, type: 'commercial',
+      content: `Laura detectó interés por ${lead.primary_problem ?? 'mejorar la atención comercial'}.`,
+      metadata: { lead_id: lead.id, sector: lead.sector, recommendation: lead.recommended_employees, roi: lead.roi_snapshot },
+    });
+    await publishEvent({
+      companyId, customerId: customer.id, name: 'LeadCreated', source: 'laura_sales_assistant',
+      idempotencyKey: `brain:laura:lead:${lead.id}`, payload: { lead_id: lead.id, attribution: 'laura' },
+    });
+  })().catch(() => undefined);
   void notifyOwner({
     subject: 'Empleado24 · empresa creada',
     message: `La empresa ${companyName} ha completado el onboarding inicial.`,
