@@ -30,6 +30,9 @@ export async function POST(request: Request) {
   const recommendation = Array.isArray(body?.recommendation)
     ? body.recommendation.filter((value): value is string => typeof value === 'string').slice(0, 4)
     : [];
+  const roiSnapshot = body?.roiSnapshot && typeof body.roiSnapshot === 'object' && !Array.isArray(body.roiSnapshot)
+    ? body.roiSnapshot as Record<string, unknown>
+    : {};
 
   if (name.length < 2 || !targetEmail || companyName.length < 2 || !idempotencyKey)
     return NextResponse.json({ error: 'invalid_lead' }, { status: 400 });
@@ -67,6 +70,8 @@ export async function POST(request: Request) {
     utm_content: text(body?.utmContent, 200) || null,
     utm_term: text(body?.utmTerm, 200) || null,
     fbclid: text(body?.fbclid, 300) || null,
+    commercial_state: 'READY_TO_BUY',
+    roi_snapshot: roiSnapshot,
   };
   const { data, error } = await admin
     .from('sales_assistant_leads')
@@ -85,6 +90,13 @@ export async function POST(request: Request) {
     persistedToken = existing?.lead_token ?? null;
   }
   if (!persistedToken) return NextResponse.json({ error: 'lead_unavailable' }, { status: 503 });
+  if (anonymousId) {
+    await admin.from('sales_assistant_conversations').update({
+      commercial_state: 'READY_TO_BUY',
+      conversation_completed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq('anonymous_id', anonymousId);
+  }
   await recordBusinessEvent({
     eventName: 'sales_lead_created',
     path: '/',
