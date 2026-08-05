@@ -106,6 +106,7 @@ export default async function BusinessPage() {
     { data: purchases },
     { data: guardian },
     { data: lauraLeadData },
+    { data: lauraConversationData },
   ] = await Promise.all([
     admin
       .from('business_events')
@@ -118,7 +119,8 @@ export default async function BusinessPage() {
     admin.from('invoices').select('company_id,amount_paid_cents,status,paid_at,created_at').eq('status', 'paid').order('created_at', { ascending: false }).limit(5_000),
     admin.from('prepaid_minute_purchases').select('company_id,amount_minor,status,created_at').eq('status', 'paid').order('created_at', { ascending: false }).limit(5_000),
     admin.from('release_guardian_runs').select('status,started_at,results').order('started_at', { ascending: false }).limit(1).maybeSingle(),
-    admin.from('sales_assistant_leads').select('id,registered_user_id,registered_company_id,checkout_started_at,payment_completed_at,created_at').gte('created_at', last30d.toISOString()).order('created_at', { ascending: false }).limit(5_000),
+    admin.from('sales_assistant_leads').select('id,registered_user_id,registered_company_id,checkout_started_at,payment_completed_at,commercial_state,recommended_employees,roi_snapshot,objections,demo_opened_at,created_at').gte('created_at', last30d.toISOString()).order('created_at', { ascending: false }).limit(5_000),
+    admin.from('sales_assistant_conversations').select('commercial_state,sector,company_size,primary_problem,objection,recommended_employees,roi_snapshot,answer_history,visit_count,conversation_started_at,conversation_completed_at,demo_opened_at,created_at,updated_at').gte('created_at', last30d.toISOString()).order('updated_at', { ascending: false }).limit(5_000),
   ]);
 
   const events = (eventData ?? []) as EventRow[];
@@ -189,12 +191,35 @@ export default async function BusinessPage() {
       return result;
     }, new Map<string, number>());
   const latestGuardian = guardian as { status?: string; started_at?: string } | null;
-  const lauraLeads = (lauraLeadData ?? []) as Array<{ id: string; registered_user_id: string | null; registered_company_id: string | null; checkout_started_at: string | null; payment_completed_at: string | null; created_at: string }>;
+  const lauraLeads = (lauraLeadData ?? []) as Array<{ id: string; registered_user_id: string | null; registered_company_id: string | null; checkout_started_at: string | null; payment_completed_at: string | null; commercial_state: string; recommended_employees: string[] | null; roi_snapshot: Record<string, unknown> | null; objections: unknown[] | null; demo_opened_at: string | null; created_at: string }>;
+  const lauraConversations = (lauraConversationData ?? []) as Array<{ commercial_state: string; sector: string | null; company_size: string | null; primary_problem: string | null; objection: string | null; recommended_employees: string[] | null; roi_snapshot: Record<string, unknown> | null; answer_history: Array<{ action?: string; field?: string; value?: string }> | null; visit_count: number; conversation_started_at: string | null; conversation_completed_at: string | null; demo_opened_at: string | null; created_at: string; updated_at: string }>;
   const lauraConversationsStarted = events.filter((event) => event.metadata?.action === 'laura_conversation_started').length;
   const lauraConversationsCompleted = events.filter((event) => event.metadata?.action === 'laura_conversation_completed').length;
   const lauraRegistrations = lauraLeads.filter((lead) => Boolean(lead.registered_user_id)).length;
   const lauraCheckouts = lauraLeads.filter((lead) => Boolean(lead.checkout_started_at)).length;
   const lauraSales = lauraLeads.filter((lead) => Boolean(lead.payment_completed_at)).length;
+  const lauraDemos = lauraConversations.filter((conversation) => Boolean(conversation.demo_opened_at)).length;
+  const lauraRoiShown = lauraConversations.filter((conversation) => Boolean(conversation.roi_snapshot && Object.keys(conversation.roi_snapshot).length)).length;
+  const conversationSeconds = lauraConversations
+    .filter((conversation) => conversation.conversation_started_at && conversation.conversation_completed_at)
+    .map((conversation) => (+new Date(conversation.conversation_completed_at!) - +new Date(conversation.conversation_started_at!)) / 1000);
+  const averageLauraConversation = conversationSeconds.length ? Math.round(conversationSeconds.reduce((sum, seconds) => sum + seconds, 0) / conversationSeconds.length) : null;
+  const objections = lauraConversations.flatMap((conversation) => [
+    ...(conversation.objection ? [conversation.objection] : []),
+    ...((conversation.answer_history ?? []).filter((answer) => answer.action === 'objection').map((answer) => answer.value ?? '')),
+  ]).filter(Boolean);
+  const objectionCounts = countLabels(objections);
+  const winningRecommendations = lauraLeads.filter((lead) => lead.payment_completed_at).flatMap((lead) => lead.recommended_employees ?? []);
+  const mostSoldEmployee = topLabel(winningRecommendations);
+  const mostSoldPack = topLabel(lauraLeads.filter((lead) => lead.payment_completed_at && (lead.recommended_employees?.length ?? 0) > 1).map((lead) => (lead.recommended_employees ?? []).join(' + ')));
+  const responseOutcomes = lauraConversations.reduce((result, conversation) => {
+    const answer = conversation.primary_problem ?? 'Sin respuesta';
+    const entry = result.get(answer) ?? { total: 0, completed: 0 };
+    entry.total += 1;
+    if (conversation.conversation_completed_at) entry.completed += 1;
+    result.set(answer, entry);
+    return result;
+  }, new Map<string, { total: number; completed: number }>());
 
   return (
     <main className="px-5 py-8 md:px-8 md:py-10">
@@ -241,6 +266,13 @@ export default async function BusinessPage() {
         <Metric label="Registros desde Laura" value={String(lauraRegistrations)} />
         <Metric label="Checkout desde Laura" value={String(lauraCheckouts)} />
         <Metric label="Ventas desde Laura" value={String(lauraSales)} />
+        <Metric label="Tiempo medio conversación Laura" value={averageLauraConversation === null ? '—' : `${averageLauraConversation} s`} />
+        <Metric label="Objeciones recibidas" value={String(objections.length)} />
+        <Metric label="ROI mostrado" value={String(lauraRoiShown)} />
+        <Metric label="Demos abiertas desde Laura" value={String(lauraDemos)} />
+        <Metric label="Ingresos generados por Laura" value={money(lauraLeads.filter((lead) => lead.payment_completed_at).reduce((sum, lead) => sum + (lead.registered_company_id ? paidByCompany.get(lead.registered_company_id) ?? 0 : 0), 0))} />
+        <Metric label="Empleado más vendido por Laura" value={mostSoldEmployee ?? '—'} />
+        <Metric label="Equipo más vendido por Laura" value={mostSoldPack ?? '—'} />
       </section>
 
       <section className="mt-10 grid gap-4 lg:grid-cols-2">
@@ -316,6 +348,25 @@ export default async function BusinessPage() {
         </article>
       </section>
 
+      <section className="mt-10 grid gap-4 lg:grid-cols-2">
+        <article className="rounded-2xl border border-white/10 bg-white/[.035] p-6">
+          <h2 className="text-lg font-semibold">Aprendizaje de Laura</h2>
+          <p className="mt-2 text-sm text-white/45">Respuestas y objeciones agregadas de conversaciones comerciales. No se muestran datos personales.</p>
+          <div className="mt-5 grid gap-3 text-sm text-white/70">
+            {Array.from(responseOutcomes.entries()).sort((a, b) => b[1].total - a[1].total).slice(0, 5).map(([answer, result]) => <Row key={answer} label={answer} value={`${result.completed}/${result.total} completan · ${conversion(result.completed, result.total)}`} />)}
+            {!responseOutcomes.size && <p className="text-sm text-white/45">Aún no hay respuestas de Laura suficientes para aprender.</p>}
+          </div>
+        </article>
+        <article className="rounded-2xl border border-white/10 bg-white/[.035] p-6">
+          <h2 className="text-lg font-semibold">Objeciones y oportunidad</h2>
+          <p className="mt-2 text-sm text-white/45">Sirve para ajustar el argumento comercial sin grabar conversaciones ni teclas.</p>
+          <div className="mt-5 grid gap-3 text-sm text-white/70">
+            {Array.from(objectionCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([objection, count]) => <Row key={objection} label={objection} value={`${count} vez${count === 1 ? '' : 'es'}`} />)}
+            {!objectionCounts.size && <p className="text-sm text-white/45">Aún no hay objeciones registradas.</p>}
+          </div>
+        </article>
+      </section>
+
       <section className="mt-10 rounded-2xl border border-white/10 bg-white/[.035] p-6">
         <h2 className="text-lg font-semibold">Empresas reales</h2>
         <div className="mt-4 overflow-x-auto">
@@ -360,4 +411,17 @@ function Row({ label, value }: { label: string; value: string }) {
 
 function FunnelRow({ label, value, previous }: { label: string; value: number; previous?: number }) {
   return <div className="flex items-center justify-between border-b border-white/8 pb-2"><span>{label}</span><strong className="text-[#ddff57]">{value}{previous === undefined ? '' : ` · ${conversion(value, previous)}`}</strong></div>;
+}
+
+function countLabels(labels: string[]) {
+  return labels.reduce((result, label) => {
+    const normalized = label.trim();
+    if (normalized) result.set(normalized, (result.get(normalized) ?? 0) + 1);
+    return result;
+  }, new Map<string, number>());
+}
+
+function topLabel(labels: string[]) {
+  const counts = countLabels(labels);
+  return Array.from(counts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
 }
