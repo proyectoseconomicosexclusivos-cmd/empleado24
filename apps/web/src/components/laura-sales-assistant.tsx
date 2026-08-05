@@ -2,19 +2,33 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRight, MessageCircle, X } from 'lucide-react';
+import { ArrowRight, MessageCircle, Play, Sparkles, X } from 'lucide-react';
 import { EmployeeAvatar } from '@/components/employee-avatar';
 import { employeeShowcase } from '@/lib/employee-showcase';
 
-type Step = 'welcome' | 'sector' | 'size' | 'problem' | 'recommendation' | 'lead' | 'done';
+type Step = 'welcome' | 'sector' | 'size' | 'problem' | 'recommendation' | 'objection' | 'lead' | 'done';
+type CommercialState = 'COLD' | 'INTERESTED' | 'VERY_INTERESTED' | 'READY_TO_BUY' | 'CLIENT';
 type Identity = { anonymousId: string; sessionId: string; landing: string };
+type SavedConversation = {
+  commercial_state: CommercialState;
+  sector: string | null;
+  company_size: string | null;
+  primary_problem: string | null;
+  recommended_employees: string[];
+  roi_snapshot: Roi | null;
+  visit_count: number;
+  objection: string | null;
+};
+type Roi = { monthlyHours: number; hourlyValue: number; monthlySaving: number; monthlyCost: number; monthlyBenefit: number };
 
 function cookie(name: string) {
   return document.cookie.split('; ').find((entry) => entry.startsWith(`${name}=`))?.split('=')[1] ?? null;
 }
+
 function setCookie(name: string, value: string, maxAge: number) {
   document.cookie = `${name}=${encodeURIComponent(value)}; Max-Age=${maxAge}; Path=/; SameSite=Lax`;
 }
+
 function identity(): Identity {
   const anonymousId = decodeURIComponent(cookie('e24_anon') ?? crypto.randomUUID());
   const sessionId = decodeURIComponent(cookie('e24_session') ?? crypto.randomUUID());
@@ -24,35 +38,68 @@ function identity(): Identity {
   setCookie('e24_landing', landing, 60 * 60 * 24 * 30);
   return { anonymousId, sessionId, landing };
 }
-function analytics(action: string, label: string, key: string) {
+
+function analytics(action: string, label: string, key: string, extra: Record<string, unknown> = {}) {
   const visitor = identity();
   const query = new URLSearchParams(window.location.search);
-  const body = JSON.stringify({
+  const payload = {
     eventName: 'page_view', path: window.location.pathname, anonymousId: visitor.anonymousId,
     visitorId: visitor.anonymousId, sessionId: visitor.sessionId, eventId: crypto.randomUUID(),
     idempotencyKey: `laura:${key}:${visitor.sessionId}`, source: 'laura_sales_assistant',
     landing: visitor.landing, referrer: document.referrer || null,
-    utmSource: query.get('utm_source'), utmMedium: query.get('utm_medium'),
-    utmCampaign: query.get('utm_campaign'), utmContent: query.get('utm_content'),
-    utmTerm: query.get('utm_term'), fbclid: query.get('fbclid'), gclid: query.get('gclid'),
-    metadata: { action, label, zone: 'laura_sales_assistant' },
-  });
+    utmSource: query.get('utm_source'), utmMedium: query.get('utm_medium'), utmCampaign: query.get('utm_campaign'),
+    utmContent: query.get('utm_content'), utmTerm: query.get('utm_term'), fbclid: query.get('fbclid'), gclid: query.get('gclid'),
+    metadata: { action, label, zone: 'laura_sales_assistant', ...extra },
+  };
+  const body = JSON.stringify(payload);
   const beacon = new Blob([body], { type: 'application/json' });
   if (navigator.sendBeacon?.('/api/analytics/event', beacon)) return;
   void fetch('/api/analytics/event', { method: 'POST', headers: { 'content-type': 'application/json' }, body, keepalive: true }).catch(() => undefined);
 }
 
+async function remember(input: Record<string, unknown>) {
+  const visitor = identity();
+  const response = await fetch('/api/sales-assistant/conversation', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ ...input, anonymousId: visitor.anonymousId, sessionId: visitor.sessionId }),
+  });
+  return (await response.json().catch(() => null)) as { conversation?: SavedConversation } | null;
+}
+
 const options = {
   sector: ['Constructora', 'Inmobiliaria', 'Clínica', 'Restaurante', 'Despacho', 'Otro'],
   size: ['Solo yo', '2–5 personas', '6–20 personas', 'Más de 20'],
-  problem: [['llamadas', 'Muchas llamadas'], ['whatsapp', 'Muchos WhatsApp'], ['ventas', 'No cierro ventas'], ['clientes', 'Pierdo clientes'], ['presupuestos', 'Hago presupuestos']],
+  problem: [
+    ['llamadas', 'Pierdo llamadas'], ['whatsapp', 'Muchos WhatsApp'], ['ventas', 'No cierro ventas'],
+    ['clientes', 'Pierdo clientes'], ['presupuestos', 'Hago presupuestos'],
+  ],
 } as const;
-function recommendationFor(problem: string) {
-  if (problem === 'presupuestos') return { names: ['Marta', 'Carlos'], plan: 'Marta + Carlos', employee: 'employee_budget' };
-  if (problem === 'whatsapp') return { names: ['David', 'Carlos'], plan: 'David + Carlos', employee: 'employee_whatsapp' };
-  if (problem === 'ventas' || problem === 'clientes') return { names: ['Laura', 'Carlos'], plan: 'Laura + Carlos', employee: 'employee_closer' };
-  return { names: ['Laura', 'Carlos'], plan: 'Laura + Carlos', employee: 'one_employee' };
+
+function recommendationFor(sector: string, problem: string) {
+  if (sector === 'Constructora') return { names: ['Laura', 'Marta', 'Carlos'], plan: 'Laura + Presupuestos IA + Carlos', employee: 'employee_budget', cost: 391 };
+  if (sector === 'Clínica') return { names: ['Laura', 'Agenda'], plan: 'Laura + Agenda', employee: 'one_employee', cost: 97 };
+  if (sector === 'Inmobiliaria') return { names: ['Laura', 'Carlos'], plan: 'Laura + Carlos', employee: 'employee_closer', cost: 294 };
+  if (sector === 'Restaurante') return { names: ['Laura', 'Elena'], plan: 'Laura + Elena', employee: 'employee_whatsapp', cost: 194 };
+  if (problem === 'presupuestos') return { names: ['Marta', 'Carlos'], plan: 'Marta + Carlos', employee: 'employee_budget', cost: 394 };
+  if (problem === 'whatsapp') return { names: ['Elena', 'Carlos'], plan: 'Elena + Carlos', employee: 'employee_whatsapp', cost: 294 };
+  if (problem === 'ventas' || problem === 'clientes') return { names: ['Laura', 'Carlos'], plan: 'Laura + Carlos', employee: 'employee_closer', cost: 294 };
+  return { names: ['Laura'], plan: 'Laura', employee: 'one_employee', cost: 97 };
 }
+
+function roiFor(size: string, cost: number): Roi {
+  const monthlyHours = size === 'Más de 20' ? 60 : size === '6–20 personas' ? 40 : size === '2–5 personas' ? 25 : 15;
+  const hourlyValue = 20;
+  const monthlySaving = monthlyHours * hourlyValue;
+  return { monthlyHours, hourlyValue, monthlySaving, monthlyCost: cost, monthlyBenefit: Math.max(0, monthlySaving - cost) };
+}
+
+const stateCopy: Record<CommercialState, string> = {
+  COLD: 'Cuéntame un poco sobre tu empresa y te ayudo a decidir.',
+  INTERESTED: 'La última vez hablamos de tu empresa. Seguimos desde ahí.',
+  VERY_INTERESTED: 'Ya tengo una recomendación para ti. Te enseño el ahorro estimado.',
+  READY_TO_BUY: 'Ya tienes tu equipo recomendado. Puedes activarlo cuando quieras.',
+  CLIENT: 'Gracias por confiar en el equipo. Estoy preparada para ayudarte.',
+};
 
 export function LauraSalesAssistant() {
   const [visible, setVisible] = useState(false);
@@ -60,12 +107,32 @@ export function LauraSalesAssistant() {
   const [sector, setSector] = useState('');
   const [companySize, setCompanySize] = useState('');
   const [problem, setProblem] = useState('');
+  const [state, setState] = useState<CommercialState>('COLD');
+  const [visitCount, setVisitCount] = useState(0);
   const [exitCopy, setExitCopy] = useState(false);
+  const [nudge, setNudge] = useState<'demo' | 'trial' | null>(null);
+  const [objection, setObjection] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const activated = useRef(false);
-  const recommendation = useMemo(() => recommendationFor(problem), [problem]);
+  const recommendation = useMemo(() => recommendationFor(sector, problem), [sector, problem]);
+  const roi = useMemo(() => roiFor(companySize, recommendation.cost), [companySize, recommendation.cost]);
   const laura = employeeShowcase.find((employee) => employee.person === 'Laura');
+
+  useEffect(() => {
+    const visitor = identity();
+    void fetch(`/api/sales-assistant/conversation?anonymousId=${encodeURIComponent(visitor.anonymousId)}`)
+      .then((response) => response.ok ? response.json() : null)
+      .then((data: { conversation?: SavedConversation } | null) => {
+        const saved = data?.conversation;
+        if (!saved) return;
+        setState(saved.commercial_state);
+        setVisitCount(saved.visit_count);
+        setSector(saved.sector ?? '');
+        setCompanySize(saved.company_size ?? '');
+        setProblem(saved.primary_problem ?? '');
+      }).catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     const reveal = (reason: 'timer' | 'scroll') => {
@@ -73,6 +140,7 @@ export function LauraSalesAssistant() {
       activated.current = true;
       setVisible(true);
       analytics('laura_presented', reason, `presented:${reason}`);
+      void remember({ action: 'presented', commercialState: state }).then((data) => setVisitCount(data?.conversation?.visit_count ?? 0));
     };
     const timer = window.setTimeout(() => reveal('timer'), 4000);
     const onScroll = () => {
@@ -81,72 +149,95 @@ export function LauraSalesAssistant() {
     };
     const onExit = (event: MouseEvent) => {
       if (event.clientY > 0 || step === 'done') return;
-      setExitCopy(true);
-      setVisible(true);
+      setExitCopy(true); setVisible(true);
       analytics('laura_exit_intent', 'before_leave', 'exit_intent');
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     document.addEventListener('mouseout', onExit);
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener('scroll', onScroll);
-      document.removeEventListener('mouseout', onExit);
-    };
-  }, [step]);
+    return () => { window.clearTimeout(timer); window.removeEventListener('scroll', onScroll); document.removeEventListener('mouseout', onExit); };
+  }, [state, step]);
+
+  useEffect(() => {
+    if (!visible || step === 'done') return;
+    const demoTimer = window.setTimeout(() => { setNudge('demo'); analytics('laura_demo_offer', 'two_minutes', 'demo_offer'); }, 120_000);
+    const trialTimer = window.setTimeout(() => { setNudge('trial'); analytics('laura_trial_offer', 'four_minutes', 'trial_offer'); }, 240_000);
+    return () => { window.clearTimeout(demoTimer); window.clearTimeout(trialTimer); };
+  }, [visible, step]);
 
   function start() {
     setExitCopy(false);
-    setStep('sector');
+    if (sector && companySize && problem) { setStep('recommendation'); return; }
+    setStep(sector ? 'size' : 'sector');
     analytics('laura_conversation_started', 'start', 'conversation_started');
+    void remember({ action: 'intent', commercialState: 'INTERESTED' }); setState('INTERESTED');
+  }
+
+  function selectAnswer(field: 'sector' | 'size' | 'problem', value: string) {
+    const next = field === 'sector' ? { sector: value, companySize, problem } : field === 'size' ? { sector, companySize: value, problem } : { sector, companySize, problem: value };
+    if (field === 'sector') { setSector(value); setStep('size'); }
+    if (field === 'size') { setCompanySize(value); setStep('problem'); }
+    if (field === 'problem') { setProblem(value); setStep('recommendation'); }
+    const nextState: CommercialState = field === 'problem' ? 'VERY_INTERESTED' : 'INTERESTED';
+    analytics('laura_answer', `${field}:${value}`, `${field}:${value}`);
+    void remember({ action: 'answer', field, value, commercialState: nextState, ...next }); setState(nextState);
+  }
+
+  function showRecommendation() {
+    setStep('lead'); setState('READY_TO_BUY');
+    analytics('laura_intent', recommendation.plan, 'intent', { recommendation: recommendation.names });
+    void remember({ action: 'roi', commercialState: 'READY_TO_BUY', sector, companySize, primaryProblem: problem, recommendation: recommendation.names, roi });
+  }
+
+  async function sendObjection(form: FormData) {
+    const value = String(form.get('objection') ?? '').trim().slice(0, 200);
+    if (!value) return;
+    setObjection(value);
+    analytics('laura_objection', value.toLowerCase().includes('car') || value.toLowerCase().includes('precio') ? 'price' : 'other', 'objection');
+    await remember({ action: 'objection', value, commercialState: 'VERY_INTERESTED', sector, companySize, primaryProblem: problem, recommendation: recommendation.names });
   }
 
   async function createLead(form: FormData) {
-    setSaving(true);
-    setError('');
-    const visitor = identity();
-    const query = new URLSearchParams(window.location.search);
-    const idempotencyKey = `lead:${visitor.sessionId}:${problem}:${String(form.get('email')).trim().toLowerCase()}`;
+    setSaving(true); setError('');
+    const visitor = identity(); const query = new URLSearchParams(window.location.search);
+    const idempotencyKey = `lead:${visitor.sessionId}:${problem}`;
     const response = await fetch('/api/sales-assistant/lead', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        name: form.get('name'), email: form.get('email'), companyName: form.get('company'),
-        sector, companySize, primaryProblem: problem, recommendation: recommendation.names,
-        anonymousId: visitor.anonymousId, sessionId: visitor.sessionId, landing: visitor.landing,
-        referrer: document.referrer || null, utmSource: query.get('utm_source'), utmMedium: query.get('utm_medium'),
-        utmCampaign: query.get('utm_campaign'), utmContent: query.get('utm_content'), utmTerm: query.get('utm_term'),
-        fbclid: query.get('fbclid'), idempotencyKey,
+        name: form.get('name'), email: form.get('email'), companyName: form.get('company'), sector, companySize,
+        primaryProblem: problem, recommendation: recommendation.names, anonymousId: visitor.anonymousId, sessionId: visitor.sessionId,
+        landing: visitor.landing, referrer: document.referrer || null, utmSource: query.get('utm_source'), utmMedium: query.get('utm_medium'),
+        utmCampaign: query.get('utm_campaign'), utmContent: query.get('utm_content'), utmTerm: query.get('utm_term'), fbclid: query.get('fbclid'), roiSnapshot: roi, idempotencyKey,
       }),
     });
     const data = (await response.json().catch(() => ({}))) as { leadToken?: string };
-    if (!response.ok || !data.leadToken) {
-      setError('No he podido guardar tu recomendación. Vuelve a intentarlo.');
-      setSaving(false);
-      return;
-    }
+    if (!response.ok || !data.leadToken) { setError('No he podido guardar tu recomendación. Vuelve a intentarlo.'); setSaving(false); return; }
     analytics('laura_conversation_completed', recommendation.plan, 'conversation_completed');
-    setStep('done');
-    setSaving(false);
-    const next = new URL(window.location.href);
-    next.searchParams.set('laura', data.leadToken);
+    void remember({ action: 'completed', commercialState: 'READY_TO_BUY', sector, companySize, primaryProblem: problem, recommendation: recommendation.names, roi });
+    setStep('done'); setSaving(false);
+    const next = new URL(window.location.href); next.searchParams.set('laura', data.leadToken);
     window.history.replaceState(null, '', `${next.pathname}${next.search}`);
+  }
+
+  function openDemo() {
+    analytics('laura_demo_opened', recommendation.plan, 'demo_opened');
+    void remember({ action: 'demo', commercialState: state, sector, companySize, primaryProblem: problem, recommendation: recommendation.names });
   }
 
   if (!visible) return null;
   const continuation = new URLSearchParams(window.location.search).get('laura');
   const registerHref = `/register?employee=${recommendation.employee}&from=laura${continuation ? `&laura=${encodeURIComponent(continuation)}` : ''}`;
-  return <aside className="fixed bottom-5 right-4 z-[60] w-[min(92vw,390px)] rounded-[2rem] border border-[var(--line)] bg-[var(--card)] p-5 text-[var(--fg)] shadow-2xl" aria-label="Hablar con Laura">
-    <div className="flex items-start gap-3">
-      {laura && <EmployeeAvatar portrait={laura.portrait} name="Laura" className="h-12 w-12 shrink-0 rounded-2xl" objectPosition={laura.portraitPosition} />}
-      <div className="min-w-0 flex-1"><p className="text-sm font-semibold">Laura · Recepcionista IA</p><p className="mt-0.5 text-xs text-[var(--muted)]">Estoy aquí para ayudarte a elegir tu equipo.</p></div>
-      <button type="button" onClick={() => setVisible(false)} className="grid h-8 w-8 place-items-center rounded-full border border-[var(--line)]" aria-label="Cerrar conversación"><X size={15}/></button>
-    </div>
-    {step === 'welcome' && <div className="mt-5"><p className="text-[15px] leading-6">{exitCopy ? 'Antes de irte… ¿quieres que te prepare gratis qué empleados contrataría para tu empresa?' : 'Hola 👋 Soy Laura. Trabajo como recepcionista virtual. ¿A qué se dedica tu empresa?'}</p><button type="button" onClick={start} data-e24-track="laura_start" data-e24-zone="laura_sales_assistant" className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#ccff00] px-4 py-2.5 text-sm font-semibold text-[#111315]">Hablar con Laura <MessageCircle size={15}/></button></div>}
-    {step === 'sector' && <Choice title="¿A qué se dedica tu empresa?" choices={options.sector} onSelect={(value) => { setSector(value); setStep('size'); analytics('laura_answer', `sector:${value}`, `sector:${value}`); }} />}
-    {step === 'size' && <Choice title="¿Cuántas personas trabajan contigo?" choices={options.size} onSelect={(value) => { setCompanySize(value); setStep('problem'); analytics('laura_answer', `size:${value}`, `size:${value}`); }} />}
-    {step === 'problem' && <Choice title="¿Cuál es tu mayor problema ahora?" choices={options.problem.map(([value, label]) => ({ value, label }))} onSelect={(value) => { setProblem(value); setStep('recommendation'); analytics('laura_answer', `problem:${value}`, `problem:${value}`); }} />}
-    {step === 'recommendation' && <div className="mt-5 rounded-2xl bg-[#efffcf] p-4 text-sm text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]"><p className="font-semibold">Creo que con {recommendation.plan} ahorrarías unas 20 horas al mes.</p><p className="mt-1 leading-5">Es una estimación inicial: confirmaremos qué necesita tu empresa antes de activar nada.</p><button type="button" onClick={() => { setStep('lead'); analytics('laura_intent', recommendation.plan, 'intent'); }} data-e24-track="laura_start_plan" data-e24-zone="laura_sales_assistant" className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#111315] px-4 py-2.5 font-semibold text-white">Quiero empezar <ArrowRight size={15}/></button></div>}
-    {step === 'lead' && <form action={createLead} className="mt-5"><p className="text-sm font-semibold">Te preparo el plan para tu empresa.</p><p className="mt-1 text-xs leading-5 text-[var(--muted)]">Solo necesito estos tres datos. No te llamaré sin que tú lo pidas.</p><input className="input mt-4 w-full" name="name" required minLength={2} placeholder="Tu nombre" autoComplete="name" /><input className="input mt-3 w-full" name="email" type="email" required placeholder="Tu email de trabajo" autoComplete="email" /><input className="input mt-3 w-full" name="company" required minLength={2} placeholder="Nombre de tu empresa" autoComplete="organization" /><button disabled={saving} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#ccff00] px-4 py-3 text-sm font-semibold text-[#111315] disabled:opacity-60">{saving ? 'Preparando tu plan…' : 'Preparar mi plan'} <ArrowRight size={15}/></button>{error && <p role="alert" className="mt-3 text-xs text-[#b23a22]">{error}</p>}</form>}
-    {step === 'done' && <div className="mt-5"><p className="text-sm font-semibold">Ya tengo tu recomendación.</p><p className="mt-1 text-sm leading-6 text-[var(--muted)]">Cuando quieras, continuamos con la incorporación de {recommendation.plan}.</p><Link href={registerHref} data-e24-track="laura_continue_registration" data-e24-zone="laura_sales_assistant" className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#ccff00] px-4 py-2.5 text-sm font-semibold text-[#111315]">Continuar con mi incorporación <ArrowRight size={15}/></Link></div>}
+  const priceObjection = objection && /(car|precio|coste|costoso)/i.test(objection);
+  return <aside className="fixed bottom-5 right-4 z-[60] w-[min(92vw,400px)] rounded-[2rem] border border-[var(--line)] bg-[var(--card)] p-5 text-[var(--fg)] shadow-2xl" aria-label="Hablar con Laura">
+    <div className="flex items-start gap-3">{laura && <EmployeeAvatar portrait={laura.portrait} name="Laura" className="h-12 w-12 shrink-0 rounded-2xl" objectPosition={laura.portraitPosition} />}<div className="min-w-0 flex-1"><p className="text-sm font-semibold">Laura · Recepcionista IA</p><p className="mt-0.5 text-xs text-[var(--muted)]">Estoy aquí para ayudarte a decidir.</p></div><button type="button" onClick={() => setVisible(false)} className="grid h-8 w-8 place-items-center rounded-full border border-[var(--line)]" aria-label="Cerrar conversación"><X size={15}/></button></div>
+    {step === 'welcome' && <div className="mt-5"><p className="text-[15px] leading-6">{exitCopy ? 'Antes de irte… ¿quieres que te prepare gratis qué empleados contrataría para tu empresa?' : visitCount >= 3 ? 'Creo que ya has visto cómo funciona. ¿Quieres activarlo ahora?' : state === 'COLD' ? 'Hola 👋 Soy Laura. Trabajo como recepcionista virtual. ¿A qué se dedica tu empresa?' : stateCopy[state]}</p><button type="button" onClick={start} className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#ccff00] px-4 py-2.5 text-sm font-semibold text-[#111315]">{state === 'COLD' ? 'Hablar con Laura' : 'Ver mi recomendación'} <MessageCircle size={15}/></button></div>}
+    {step === 'sector' && <Choice title="¿A qué se dedica tu empresa?" choices={options.sector} onSelect={(value) => selectAnswer('sector', value)} />}
+    {step === 'size' && <Choice title="¿Cuántas personas trabajan contigo?" choices={options.size} onSelect={(value) => selectAnswer('size', value)} />}
+    {step === 'problem' && <Choice title="¿Qué te quita más tiempo ahora?" choices={options.problem.map(([value, label]) => ({ value, label }))} onSelect={(value) => selectAnswer('problem', value)} />}
+    {step === 'recommendation' && <div className="mt-5 rounded-2xl bg-[#efffcf] p-4 text-sm text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]"><p className="font-semibold">Para una {sector || 'empresa'} como la tuya, empezaría con {recommendation.plan}.</p><p className="mt-2 leading-5">Con {roi.monthlyHours} horas recuperadas al mes, a {roi.hourlyValue} €/hora: ahorras {roi.monthlySaving} €, cuesta {roi.monthlyCost} € y el beneficio estimado es {roi.monthlyBenefit} €/mes.</p><button type="button" onClick={showRecommendation} className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#111315] px-4 py-2.5 font-semibold text-white">Quiero empezar <ArrowRight size={15}/></button><button type="button" onClick={() => setStep('objection')} className="ml-2 mt-2 text-xs font-medium underline">Tengo una duda</button></div>}
+    {step === 'objection' && <form action={sendObjection} className="mt-5"><p className="text-sm font-semibold">¿Qué te hace dudar?</p><input className="input mt-3 w-full" name="objection" required placeholder="Por ejemplo: me parece caro" /><button className="mt-3 rounded-full border border-[var(--line)] px-4 py-2 text-sm font-medium">Resolver mi duda</button>{objection && <div className="mt-3 rounded-xl bg-[#efffcf] p-3 text-sm text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]">{priceObjection ? `Lo entiendo. Si recuperas ${roi.monthlyHours} horas, el coste de ${roi.monthlyCost} €/mes equivale a ${Math.max(1, Math.round(roi.monthlyCost / roi.hourlyValue))} horas de trabajo. La estimación deja ${roi.monthlyBenefit} €/mes de margen de tiempo y dinero.` : `Gracias por contármelo. La prueba de 3 días te permite comprobarlo con tu empresa antes de decidir.`}<button type="button" onClick={() => setStep('recommendation')} className="ml-2 font-semibold underline">Volver al plan</button></div>}</form>}
+    {step === 'lead' && <form action={createLead} className="mt-5"><p className="text-sm font-semibold">Te preparo la incorporación.</p><p className="mt-1 text-xs leading-5 text-[var(--muted)]">Solo necesito estos tres datos. Después eliges tú cuándo activar el equipo.</p><input className="input mt-4 w-full" name="name" required minLength={2} placeholder="Tu nombre" autoComplete="name" /><input className="input mt-3 w-full" name="email" type="email" required placeholder="Tu email de trabajo" autoComplete="email" /><input className="input mt-3 w-full" name="company" required minLength={2} placeholder="Nombre de tu empresa" autoComplete="organization" /><button disabled={saving} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#ccff00] px-4 py-3 text-sm font-semibold text-[#111315] disabled:opacity-60">{saving ? 'Preparando tu plan…' : 'Preparar mi incorporación'} <ArrowRight size={15}/></button>{error && <p role="alert" className="mt-3 text-xs text-[#b23a22]">{error}</p>}</form>}
+    {step === 'done' && <div className="mt-5"><p className="text-sm font-semibold">Tu recomendación está lista.</p><p className="mt-1 text-sm leading-6 text-[var(--muted)]">Empiezas con 3 días de prueba y puedes cancelar cuando quieras.</p><Link href={registerHref} className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#ccff00] px-4 py-2.5 text-sm font-semibold text-[#111315]">Activar mi prueba <ArrowRight size={15}/></Link></div>}
+    {nudge && step !== 'done' && <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-[#d7ed91] bg-[#fbfff0] p-3 text-sm text-[#486500] dark:border-[#4a6412] dark:bg-[#202a05] dark:text-[#d5f899]"><span>{nudge === 'demo' ? '¿Quieres que te enseñe cómo trabajaría con tu empresa?' : 'Hoy puedes probarlo gratis durante 3 días.'}</span>{nudge === 'demo' ? <Link href={`/demo?employee=recepcionista-ia&from=laura`} onClick={openDemo} className="inline-flex shrink-0 items-center gap-1 font-semibold underline">Ver demo <Play size={13}/></Link> : <button type="button" onClick={() => setStep('recommendation')} className="shrink-0 font-semibold underline">Ver plan <Sparkles size={13} className="inline" /></button>}</div>}
   </aside>;
 }
 
