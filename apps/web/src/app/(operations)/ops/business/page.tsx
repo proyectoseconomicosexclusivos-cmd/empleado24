@@ -107,6 +107,7 @@ export default async function BusinessPage() {
     { data: guardian },
     { data: lauraLeadData },
     { data: lauraConversationData },
+    { data: conversionExperiments },
   ] = await Promise.all([
     admin
       .from('business_events')
@@ -119,8 +120,9 @@ export default async function BusinessPage() {
     admin.from('invoices').select('company_id,amount_paid_cents,status,paid_at,created_at').eq('status', 'paid').order('created_at', { ascending: false }).limit(5_000),
     admin.from('prepaid_minute_purchases').select('company_id,amount_minor,status,created_at').eq('status', 'paid').order('created_at', { ascending: false }).limit(5_000),
     admin.from('release_guardian_runs').select('status,started_at,results').order('started_at', { ascending: false }).limit(1).maybeSingle(),
-    admin.from('sales_assistant_leads').select('id,registered_user_id,registered_company_id,checkout_started_at,payment_completed_at,commercial_state,recommended_employees,roi_snapshot,objections,demo_opened_at,created_at').gte('created_at', last30d.toISOString()).order('created_at', { ascending: false }).limit(5_000),
-    admin.from('sales_assistant_conversations').select('commercial_state,sector,company_size,primary_problem,objection,recommended_employees,roi_snapshot,answer_history,visit_count,conversation_started_at,conversation_completed_at,demo_opened_at,created_at,updated_at').gte('created_at', last30d.toISOString()).order('updated_at', { ascending: false }).limit(5_000),
+    admin.from('sales_assistant_leads').select('id,name,email,company_name,anonymous_id,registered_user_id,registered_company_id,checkout_started_at,payment_completed_at,commercial_state,recommended_employees,roi_snapshot,objections,demo_opened_at,contact_consent_at,created_at').gte('created_at', last30d.toISOString()).order('created_at', { ascending: false }).limit(5_000),
+    admin.from('sales_assistant_conversations').select('anonymous_id,commercial_state,sector,company_size,primary_problem,objection,recommended_employees,roi_snapshot,answer_history,visit_count,conversation_started_at,conversation_completed_at,demo_opened_at,created_at,updated_at').gte('created_at', last30d.toISOString()).order('updated_at', { ascending: false }).limit(5_000),
+    admin.from('conversion_experiments').select('experiment_key,display_name,status,variants,started_at').order('created_at', { ascending: false }).limit(20),
   ]);
 
   const events = (eventData ?? []) as EventRow[];
@@ -191,8 +193,8 @@ export default async function BusinessPage() {
       return result;
     }, new Map<string, number>());
   const latestGuardian = guardian as { status?: string; started_at?: string } | null;
-  const lauraLeads = (lauraLeadData ?? []) as Array<{ id: string; registered_user_id: string | null; registered_company_id: string | null; checkout_started_at: string | null; payment_completed_at: string | null; commercial_state: string; recommended_employees: string[] | null; roi_snapshot: Record<string, unknown> | null; objections: unknown[] | null; demo_opened_at: string | null; created_at: string }>;
-  const lauraConversations = (lauraConversationData ?? []) as Array<{ commercial_state: string; sector: string | null; company_size: string | null; primary_problem: string | null; objection: string | null; recommended_employees: string[] | null; roi_snapshot: Record<string, unknown> | null; answer_history: Array<{ action?: string; field?: string; value?: string }> | null; visit_count: number; conversation_started_at: string | null; conversation_completed_at: string | null; demo_opened_at: string | null; created_at: string; updated_at: string }>;
+  const lauraLeads = (lauraLeadData ?? []) as Array<{ id: string; name: string; email: string; company_name: string; anonymous_id: string | null; registered_user_id: string | null; registered_company_id: string | null; checkout_started_at: string | null; payment_completed_at: string | null; commercial_state: string; recommended_employees: string[] | null; roi_snapshot: Record<string, unknown> | null; objections: unknown[] | null; demo_opened_at: string | null; contact_consent_at: string | null; created_at: string }>;
+  const lauraConversations = (lauraConversationData ?? []) as Array<{ anonymous_id: string; commercial_state: string; sector: string | null; company_size: string | null; primary_problem: string | null; objection: string | null; recommended_employees: string[] | null; roi_snapshot: Record<string, unknown> | null; answer_history: Array<{ action?: string; field?: string; value?: string }> | null; visit_count: number; conversation_started_at: string | null; conversation_completed_at: string | null; demo_opened_at: string | null; created_at: string; updated_at: string }>;
   const lauraConversationsStarted = events.filter((event) => event.metadata?.action === 'laura_conversation_started').length;
   const lauraConversationsCompleted = events.filter((event) => event.metadata?.action === 'laura_conversation_completed').length;
   const lauraRegistrations = lauraLeads.filter((lead) => Boolean(lead.registered_user_id)).length;
@@ -209,6 +211,12 @@ export default async function BusinessPage() {
     ...((conversation.answer_history ?? []).filter((answer) => answer.action === 'objection').map((answer) => answer.value ?? '')),
   ]).filter(Boolean);
   const objectionCounts = countLabels(objections);
+  const objectionGroups = objections.reduce((result, objection) => {
+    const group = classifyObjection(objection);
+    result.set(group, (result.get(group) ?? 0) + 1);
+    return result;
+  }, new Map<string, number>());
+  const repeatedObjections = Array.from(objectionGroups.entries()).filter(([, count]) => count >= 5);
   const winningRecommendations = lauraLeads.filter((lead) => lead.payment_completed_at).flatMap((lead) => lead.recommended_employees ?? []);
   const mostSoldEmployee = topLabel(winningRecommendations);
   const mostSoldPack = topLabel(lauraLeads.filter((lead) => lead.payment_completed_at && (lead.recommended_employees?.length ?? 0) > 1).map((lead) => (lead.recommended_employees ?? []).join(' + ')));
@@ -220,6 +228,22 @@ export default async function BusinessPage() {
     result.set(answer, entry);
     return result;
   }, new Map<string, { total: number; completed: number }>());
+  const lauraPresented = uniqueEvents(events.filter((event) => event.metadata?.action === 'laura_presented'));
+  const lauraAnswered = uniqueEvents(events.filter((event) => event.metadata?.action === 'laura_answer'));
+  const lauraRecommended = uniqueEvents(events.filter((event) => event.metadata?.action === 'laura_intent'));
+  const registrationsStarted = uniqueEvents(events.filter((event) => ['registration_started', 'signup_started'].includes(event.event_name)));
+  const dailyFunnel = Array.from({ length: 7 }, (_, index) => {
+    const start = new Date(today.getTime() - (6 - index) * 24 * 60 * 60 * 1000);
+    const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+    const day = events.filter((event) => new Date(event.created_at) >= start && new Date(event.created_at) < end);
+    return { day: new Intl.DateTimeFormat('es-ES', { weekday: 'short', day: 'numeric' }).format(start), visits: uniqueEvents(day.filter(isPageVisit)), leads: day.filter((event) => event.event_name === 'sales_lead_created').length, registrations: day.filter((event) => event.event_name === 'signup_completed').length, payments: day.filter((event) => event.event_name === 'payment_completed').length };
+  });
+  const conversionSegments = groupConversion(events);
+  const leadScore = (lead: typeof lauraLeads[number]) => {
+    const conversation = lauraConversations.find((entry) => entry.anonymous_id === lead.anonymous_id);
+    return (lead.payment_completed_at ? 100 : 0) + (lead.checkout_started_at ? 35 : 0) + (lead.registered_user_id ? 25 : 0) + (lead.demo_opened_at ? 15 : 0) + (conversation?.demo_opened_at ? 15 : 0) + Math.min(15, (conversation?.visit_count ?? 0) * 3) + (lead.commercial_state === 'READY_TO_BUY' ? 15 : 0);
+  };
+  const contactableLeads = lauraLeads.filter((lead) => Boolean(lead.contact_consent_at) && !lead.payment_completed_at).map((lead) => ({ ...lead, score: leadScore(lead) })).sort((a, b) => b.score - a.score || +new Date(b.created_at) - +new Date(a.created_at)).slice(0, 20);
 
   return (
     <main className="px-5 py-8 md:px-8 md:py-10">
@@ -306,6 +330,32 @@ export default async function BusinessPage() {
 
       <section className="mt-10 grid gap-4 lg:grid-cols-2">
         <article className="rounded-2xl border border-white/10 bg-white/[.035] p-6">
+          <h2 className="text-lg font-semibold">Embudo Laura → cliente · 30 días</h2>
+          <p className="mt-2 text-sm text-white/45">Cuenta visitantes únicos por cada paso; muestra la pérdida respecto al paso anterior.</p>
+          <div className="mt-5 grid gap-3 text-sm text-white/70">
+            <FunnelRow label="Landing" value={visitors30d} />
+            <FunnelRow label="Habla con Laura" value={lauraPresented} previous={visitors30d} />
+            <FunnelRow label="Responde preguntas" value={lauraAnswered} previous={lauraPresented} />
+            <FunnelRow label="Ve recomendación" value={lauraRecommended} previous={lauraAnswered} />
+            <FunnelRow label="Empieza registro" value={registrationsStarted} previous={lauraRecommended} />
+            <FunnelRow label="Completa registro" value={registrations.length} previous={registrationsStarted} />
+            <FunnelRow label="Confirma email" value={confirmed.length} previous={registrations.length} />
+            <FunnelRow label="Empieza checkout" value={checkouts.length} previous={confirmed.length} />
+            <FunnelRow label="Checkout completado" value={payments.length} previous={checkouts.length} />
+            <FunnelRow label="Cliente activo" value={active.length} previous={payments.length} />
+          </div>
+        </article>
+        <article className="rounded-2xl border border-white/10 bg-white/[.035] p-6">
+          <h2 className="text-lg font-semibold">Evolución diaria</h2>
+          <p className="mt-2 text-sm text-white/45">Datos reales persistidos: visitas, recomendaciones convertidas en lead, registros y pagos.</p>
+          <div className="mt-5 grid gap-3 text-sm text-white/70">
+            {dailyFunnel.map((day) => <Row key={day.day} label={`${day.day} · ${day.visits} visitas`} value={`${day.leads} leads · ${day.registrations} registros · ${day.payments} pagos`} />)}
+          </div>
+        </article>
+      </section>
+
+      <section className="mt-10 grid gap-4 lg:grid-cols-2">
+        <article className="rounded-2xl border border-white/10 bg-white/[.035] p-6">
           <h2 className="text-lg font-semibold">Recorrido más reciente</h2>
           {firstJourneyEvent ? (
             <>
@@ -328,6 +378,26 @@ export default async function BusinessPage() {
 
       <section className="mt-10 grid gap-4 lg:grid-cols-2">
         <article className="rounded-2xl border border-white/10 bg-white/[.035] p-6">
+          <h2 className="text-lg font-semibold">Por qué no compran</h2>
+          <p className="mt-2 text-sm text-white/45">Clasificación automática de objeciones comerciales, sin conservar el texto del visitante en esta vista.</p>
+          <div className="mt-5 grid gap-3 text-sm text-white/70">
+            {Array.from(objectionGroups.entries()).sort((a, b) => b[1] - a[1]).map(([group, count]) => <Row key={group} label={group} value={`${count} caso${count === 1 ? '' : 's'}`} />)}
+            {!objectionGroups.size && <p className="text-sm text-white/45">Todavía no hay suficientes dudas registradas.</p>}
+          </div>
+          {repeatedObjections.length > 0 && <p className="mt-5 rounded-xl border border-amber-300/30 bg-amber-300/10 p-3 text-sm text-amber-100">Alerta CEO: {repeatedObjections.map(([group, count]) => `${count} personas: ${group}`).join(' · ')}</p>}
+        </article>
+        <article className="rounded-2xl border border-white/10 bg-white/[.035] p-6">
+          <h2 className="text-lg font-semibold">Conversión por segmento</h2>
+          <p className="mt-2 text-sm text-white/45">Segmentos atribuibles desde la primera visita. Los pagos de Stripe sin identidad de visita no se asignan artificialmente.</p>
+          <div className="mt-5 grid gap-3 text-sm text-white/70">
+            {conversionSegments.slice(0, 8).map((segment) => <Row key={`${segment.kind}:${segment.value}`} label={`${segment.kind}: ${segment.value}`} value={`${segment.visitors} visitas · ${segment.registrations} registros · ${conversion(segment.registrations, segment.visitors)}`} />)}
+            {!conversionSegments.length && <p className="text-sm text-white/45">No hay atribución suficiente todavía.</p>}
+          </div>
+        </article>
+      </section>
+
+      <section className="mt-10 grid gap-4 lg:grid-cols-2">
+        <article className="rounded-2xl border border-white/10 bg-white/[.035] p-6">
           <h2 className="text-lg font-semibold">Checkout y seguimiento</h2>
           <p className="mt-2 text-sm text-white/45">Se considera abandono cuando pasan 24 h sin pago ni activación para la misma empresa o cuenta.</p>
           <div className="mt-5 grid gap-3 text-sm text-white/70">
@@ -344,6 +414,25 @@ export default async function BusinessPage() {
             <Row label="Última ejecución" value={date(latestGuardian?.started_at ?? null)} />
             <Row label="Eventos persistidos (30 d)" value={String(events.length)} />
             <Row label="Idempotencia" value="Clave única por evento" />
+          </div>
+        </article>
+      </section>
+
+      <section className="mt-10 grid gap-4 lg:grid-cols-2">
+        <article className="rounded-2xl border border-white/10 bg-white/[.035] p-6">
+          <h2 className="text-lg font-semibold">Top 20 interesados</h2>
+          <p className="mt-2 text-sm text-white/45">Solo contactos que aceptaron expresamente ser contactados sobre su recomendación.</p>
+          <div className="mt-5 space-y-3 text-sm text-white/70">
+            {contactableLeads.map((lead) => <div key={lead.id} className="flex items-center justify-between gap-4 border-b border-white/8 pb-3"><span><strong className="block text-white">{lead.company_name}</strong><span>{lead.commercial_state} · puntuación {lead.score}</span></span><a className="rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold hover:border-[#ddff57]" href={`mailto:${encodeURIComponent(lead.email)}?subject=${encodeURIComponent('Tu recomendación de Empleado24')}`}>Contactar</a></div>)}
+            {!contactableLeads.length && <p className="text-sm text-white/45">Aún no hay contactos con consentimiento para seguimiento manual.</p>}
+          </div>
+        </article>
+        <article className="rounded-2xl border border-white/10 bg-white/[.035] p-6">
+          <h2 className="text-lg font-semibold">Experimentos de conversión</h2>
+          <p className="mt-2 text-sm text-white/45">Asignación estable por visitante e idempotente. La primera prueba activa compara la apertura de Laura; no altera precios, Stripe ni checkout.</p>
+          <div className="mt-5 grid gap-3 text-sm text-white/70">
+            {(conversionExperiments ?? []).map((experiment: { experiment_key: string; display_name: string; status: string; started_at: string | null }) => <Row key={experiment.experiment_key} label={experiment.display_name} value={`${experiment.status} · ${date(experiment.started_at)}`} />)}
+            {!(conversionExperiments ?? []).length && <p className="text-sm text-white/45">No hay experimentos configurados.</p>}
           </div>
         </article>
       </section>
@@ -424,4 +513,40 @@ function countLabels(labels: string[]) {
 function topLabel(labels: string[]) {
   const counts = countLabels(labels);
   return Array.from(counts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+}
+
+function classifyObjection(value: string) {
+  const input = value.toLocaleLowerCase('es-ES');
+  if (/(precio|caro|coste|cuesta|presupuesto)/.test(input)) return 'Precio';
+  if (/(duda|no sé|seguro|funciona|fiable|confianza)/.test(input)) return 'Dudas';
+  if (/(tiempo|ocupad|ahora no|liad)/.test(input)) return 'Sin tiempo';
+  if (/(compar|alternativa|opcion|opción)/.test(input)) return 'Comparando';
+  if (/(luego|más tarde|otro día|otro dia|volver)/.test(input)) return 'Vuelve luego';
+  if (/(entiendo|explica|qué es|que es|cómo funciona|como funciona)/.test(input)) return 'No entiende el producto';
+  if (/(demo|probar|prueba)/.test(input)) return 'Quiere demo';
+  return 'Otro';
+}
+
+type ConversionSegment = { kind: string; value: string; visitors: number; registrations: number };
+
+function groupConversion(events: EventRow[]): ConversionSegment[] {
+  const dimensions: Array<{ kind: string; value: (event: EventRow) => string | null }> = [
+    { kind: 'Dispositivo', value: (event) => event.metadata?.device ?? null },
+    { kind: 'Navegador', value: (event) => event.metadata?.browser ?? null },
+    { kind: 'País', value: (event) => event.metadata?.country ?? null },
+    { kind: 'Campaña', value: (event) => event.utm_campaign ?? null },
+  ];
+  return dimensions.flatMap(({ kind, value }) => {
+    const buckets = new Map<string, { visitors: Set<string>; registrations: Set<string> }>();
+    for (const event of events) {
+      const dimension = value(event);
+      const identity = key(event);
+      if (!dimension || !identity) continue;
+      const bucket = buckets.get(dimension) ?? { visitors: new Set<string>(), registrations: new Set<string>() };
+      if (isPageVisit(event)) bucket.visitors.add(identity);
+      if (event.event_name === 'signup_completed') bucket.registrations.add(identity);
+      buckets.set(dimension, bucket);
+    }
+    return Array.from(buckets.entries()).map(([segment, counts]) => ({ kind, value: segment, visitors: counts.visitors.size, registrations: counts.registrations.size }));
+  }).sort((a, b) => b.visitors - a.visitors);
 }
