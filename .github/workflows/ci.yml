@@ -1,3 +1,4 @@
+# Source-format validation applies only to files introduced or changed by this push.
 name: Continuous Integration
 
 on:
