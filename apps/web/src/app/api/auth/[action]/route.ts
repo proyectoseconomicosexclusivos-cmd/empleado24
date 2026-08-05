@@ -6,13 +6,18 @@ import { notifyOwner } from '@/lib/owner-notifications';
 import { recordBusinessEvent } from '@/lib/business-events';
 import { errorFingerprint, structuredLog } from '@/lib/structured-logger';
 
-type AuthBody = { email?: unknown; password?: unknown; name?: unknown };
+type AuthBody = { email?: unknown; password?: unknown; name?: unknown; lauraLeadToken?: unknown };
 
 function email(value: unknown) {
   const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
   return normalized.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)
     ? normalized
     : null;
+}
+
+function lauraLeadToken(value: unknown) {
+  const candidate = typeof value === 'string' ? value.trim() : '';
+  return /^[A-Za-z0-9_-]{24,128}$/.test(candidate) ? candidate : null;
 }
 
 function redirectOrigin(request: Request) {
@@ -110,6 +115,7 @@ export async function POST(
   if (action === 'register') {
     const password = typeof body?.password === 'string' ? body.password : '';
     const name = typeof body?.name === 'string' ? body.name.trim().slice(0, 120) : '';
+    const fromLaura = lauraLeadToken(body?.lauraLeadToken);
     if (password.length < 8 || password.length > 1024 || name.length < 2)
       return NextResponse.json({ error: 'invalid_registration' }, { status: 400 });
     const { data, error } = await supabase.auth.signUp({
@@ -134,6 +140,20 @@ export async function POST(
       }
       return NextResponse.json({ error: 'registration_failed' }, { status: 400 });
     }
+    const admin = createAdminClient();
+    if (fromLaura && data.user?.id) {
+      const { data: membership } = await (admin as any)
+        .from('members')
+        .select('company_id')
+        .eq('user_id', data.user.id)
+        .limit(1)
+        .maybeSingle();
+      await (admin as any)
+        .from('sales_assistant_leads')
+        .update({ registered_user_id: data.user.id, registered_company_id: membership?.company_id ?? null, updated_at: new Date().toISOString() })
+        .eq('lead_token', fromLaura)
+        .is('registered_user_id', null);
+    }
     void notifyOwner({
       subject: 'Empleado24 · nuevo registro',
       message: `Se ha creado una cuenta con ${targetEmail}.`,
@@ -141,9 +161,9 @@ export async function POST(
     }).catch(() => undefined);
     const registrationKey = data.user?.id ? `signup:${data.user.id}` : `signup:${targetEmail}`;
     await Promise.all([
-      recordBusinessEvent({ eventName: 'signup_started', userId: data.user?.id ?? null, source: 'auth.register', idempotencyKey: `${registrationKey}:started`, metadata: { source: 'auth.register' }, ...analytics }),
-      recordBusinessEvent({ eventName: 'registration_started', userId: data.user?.id ?? null, source: 'auth.register', idempotencyKey: registrationKey, metadata: { source: 'auth.register' }, ...analytics }),
-      recordBusinessEvent({ eventName: 'signup_completed', userId: data.user?.id ?? null, source: 'auth.register', idempotencyKey: `${registrationKey}:completed`, metadata: { source: 'auth.register' }, ...analytics }),
+      recordBusinessEvent({ eventName: 'signup_started', userId: data.user?.id ?? null, source: fromLaura ? 'laura_sales_assistant' : 'auth.register', idempotencyKey: `${registrationKey}:started`, metadata: { source: 'auth.register', acquisition: fromLaura ? 'laura' : null }, ...analytics }),
+      recordBusinessEvent({ eventName: 'registration_started', userId: data.user?.id ?? null, source: fromLaura ? 'laura_sales_assistant' : 'auth.register', idempotencyKey: registrationKey, metadata: { source: 'auth.register', acquisition: fromLaura ? 'laura' : null }, ...analytics }),
+      recordBusinessEvent({ eventName: 'signup_completed', userId: data.user?.id ?? null, source: fromLaura ? 'laura_sales_assistant' : 'auth.register', idempotencyKey: `${registrationKey}:completed`, metadata: { source: 'auth.register', acquisition: fromLaura ? 'laura' : null }, ...analytics }),
     ]);
     return NextResponse.json({ authenticated: Boolean(data.session) });
   }
