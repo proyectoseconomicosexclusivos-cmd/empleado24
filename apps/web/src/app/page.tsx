@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowRight,
@@ -44,6 +44,26 @@ function Section({
 }
 
 export default function Home() {
+  const [hero, setHero] = useState({
+    title: 'CONTRATA EMPLEADOS CON IA',
+    emphasis: 'DESDE 97 €/MES',
+    description: 'Personas virtuales que trabajan para tu empresa 24 horas al día. Laura te recomienda por dónde empezar en menos de dos minutos.',
+  });
+
+  useEffect(() => {
+    const anonymousId = document.cookie.split('; ').find((entry) => entry.startsWith('e24_anon='))?.split('=')[1];
+    if (!anonymousId) return;
+    void fetch(`/api/conversion/experiment?target=homepage_headline&anonymousId=${encodeURIComponent(decodeURIComponent(anonymousId))}`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload: { experiment?: { message?: string; submessage?: string } | null } | null) => {
+        const message = payload?.experiment?.message;
+        if (!message) return;
+        const [title, emphasis] = message.split('\n');
+        setHero((current) => ({ title: title ?? current.title, emphasis: emphasis ?? current.emphasis, description: payload?.experiment?.submessage ?? current.description }));
+      })
+      .catch(() => undefined);
+  }, []);
+
   return (
     <main>
       <header className="fixed inset-x-0 top-0 z-50 border-b border-[var(--line)] bg-[color:var(--bg)]/88 backdrop-blur-xl">
@@ -60,12 +80,12 @@ export default function Home() {
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <Link
-              href="#empleados"
+              href="/?laura_chat=1#hablar-con-laura"
               data-e24-track="nav_contract"
               data-e24-zone="navigation"
               className={buttonVariants({ variant: 'lime' })}
             >
-              Contratar <ArrowRight size={15} />
+              Probar a Laura <ArrowRight size={15} />
             </Link>
           </div>
         </div>
@@ -81,29 +101,28 @@ export default function Home() {
                 Tu equipo puede crecer hoy
               </span>
               <h1 className="mt-7 text-5xl font-semibold tracking-[-.075em] sm:text-6xl md:text-7xl">
-              <span className="block">CONTRATA EMPLEADOS CON IA</span>
-              <span className="block text-[#789500]">DESDE 97 €/MES</span>
+              <span className="block">{hero.title}</span>
+              <span className="block text-[#789500]">{hero.emphasis}</span>
               </h1>
               <p className="mt-7 max-w-2xl text-lg leading-8 text-[var(--muted)]">
-                Personas virtuales que trabajan para tu empresa 24 horas al día. Elige a quien
-                necesitas y empieza con una incorporación guiada.
+                {hero.description}
               </p>
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                 <Link
-                  href="#empleados"
-                  data-e24-track="hero_contract"
+                  href="/?laura_chat=1#hablar-con-laura"
+                  data-e24-track="hero_try_laura"
                   data-e24-zone="hero"
                   className={buttonVariants({ variant: 'lime' })}
                 >
-                  Contratar mi primer empleado <ArrowRight size={16} />
+                  Probar a Laura ahora <ArrowRight size={16} />
                 </Link>
                 <Link
-                  href="/demo?employee=recepcionista-ia"
-                  data-e24-track="hero_demo_laura"
+                  href="#empleados"
+                  data-e24-track="hero_team"
                   data-e24-zone="hero"
                   className={buttonVariants({ variant: 'outline' })}
                 >
-                  Hablar con Laura
+                  Ver a quién contratar
                 </Link>
               </div>
               <div className="mt-9 flex flex-wrap gap-x-6 gap-y-3 text-sm text-[var(--muted)]">
