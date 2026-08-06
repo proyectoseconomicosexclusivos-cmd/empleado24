@@ -148,6 +148,16 @@ export function LauraSalesAssistant() {
   }, []);
 
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('laura_chat') !== '1') return;
+    activated.current = true;
+    setVisible(true);
+    setStep('sector');
+    analytics('laura_demo_started', 'hero_primary_cta', 'hero_primary_cta');
+    void remember({ action: 'intent', commercialState: 'INTERESTED' });
+    setState('INTERESTED');
+  }, []);
+
+  useEffect(() => {
     const reveal = (reason: 'timer' | 'scroll') => {
       if (activated.current) return;
       activated.current = true;
@@ -241,7 +251,7 @@ export function LauraSalesAssistant() {
   const continuation = new URLSearchParams(window.location.search).get('laura');
   const registerHref = `/register?employee=${recommendation.employee}&from=laura${continuation ? `&laura=${encodeURIComponent(continuation)}` : ''}`;
   const priceObjection = objection && /(car|precio|coste|costoso)/i.test(objection);
-  return <aside className="fixed bottom-5 right-4 z-[60] w-[min(92vw,400px)] rounded-[2rem] border border-[var(--line)] bg-[var(--card)] p-5 text-[var(--fg)] shadow-2xl" aria-label="Hablar con Laura">
+  return <aside id="hablar-con-laura" className="fixed bottom-5 right-4 z-[60] w-[min(92vw,400px)] rounded-[2rem] border border-[var(--line)] bg-[var(--card)] p-5 text-[var(--fg)] shadow-2xl" aria-label="Hablar con Laura">
     <div className="flex items-start gap-3">{laura && <EmployeeAvatar portrait={laura.portrait} name="Laura" className="h-12 w-12 shrink-0 rounded-2xl" objectPosition={laura.portraitPosition} />}<div className="min-w-0 flex-1"><p className="text-sm font-semibold">Laura · Recepcionista IA</p><p className="mt-0.5 text-xs text-[var(--muted)]">Estoy aquí para ayudarte a decidir.</p></div><button type="button" onClick={() => setVisible(false)} className="grid h-8 w-8 place-items-center rounded-full border border-[var(--line)]" aria-label="Cerrar conversación"><X size={15}/></button></div>
     {step === 'welcome' && <div className="mt-5"><p className="text-[15px] leading-6">{exitCopy ? 'Antes de irte… ¿quieres que te prepare gratis qué empleados contrataría para tu empresa?' : visitCount >= 3 ? 'Creo que ya has visto cómo funciona. ¿Quieres activarlo ahora?' : state === 'COLD' ? openingMessage : stateCopy[state]}</p><button type="button" onClick={start} className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#ccff00] px-4 py-2.5 text-sm font-semibold text-[#111315]">{state === 'COLD' ? 'Hablar con Laura' : 'Ver mi recomendación'} <MessageCircle size={15}/></button></div>}
     {step === 'sector' && <Choice title="¿A qué se dedica tu empresa?" choices={options.sector} onSelect={(value) => selectAnswer('sector', value)} />}
