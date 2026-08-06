@@ -20,6 +20,7 @@ type SavedConversation = {
   objection: string | null;
 };
 type Roi = { monthlyHours: number; hourlyValue: number; monthlySaving: number; monthlyCost: number; monthlyBenefit: number };
+type Intervention = 'timer' | 'scroll' | 'faq' | 'price' | 'comparison' | 'exit';
 
 function cookie(name: string) {
   return document.cookie.split('; ').find((entry) => entry.startsWith(`${name}=`))?.split('=')[1] ?? null;
@@ -101,6 +102,15 @@ const stateCopy: Record<CommercialState, string> = {
   CLIENT: 'Gracias por confiar en el equipo. Estoy preparada para ayudarte.',
 };
 
+const interventionCopy: Record<Intervention, string> = {
+  timer: '¿Quieres que te diga qué empleado puede ayudarte primero? Solo necesito dos respuestas.',
+  scroll: 'Parece que estás revisando el equipo. ¿Quieres una recomendación directa para tu empresa?',
+  faq: 'Parece que estás comparando opciones. Dime qué te preocupa y te recomiendo por dónde empezar.',
+  price: '¿Quieres comprobar cuánto tiempo recuperarías antes de decidir? Te lo calculo en menos de un minuto.',
+  comparison: '¿Estás valorando alternativas? Dime a qué te dedicas y te digo qué empleado te conviene primero.',
+  exit: 'Antes de irte: ¿quieres que te prepare gratis qué empleado contrataría para tu empresa?',
+};
+
 export function LauraSalesAssistant() {
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState<Step>('welcome');
@@ -116,6 +126,8 @@ export function LauraSalesAssistant() {
   const [error, setError] = useState('');
   const [openingMessage, setOpeningMessage] = useState('Hola 👋 Soy Laura. Trabajo como recepcionista virtual. ¿A qué se dedica tu empresa?');
   const activated = useRef(false);
+  const lastPointer = useRef<{ x: number; y: number } | null>(null);
+  const pointerDistance = useRef(0);
   const recommendation = useMemo(() => recommendationFor(sector, problem), [sector, problem]);
   const roi = useMemo(() => roiFor(companySize, recommendation.cost), [companySize, recommendation.cost]);
   const laura = employeeShowcase.find((employee) => employee.person === 'Laura');
@@ -136,6 +148,16 @@ export function LauraSalesAssistant() {
   }, []);
 
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('laura_chat') !== '1') return;
+    activated.current = true;
+    setVisible(true);
+    setStep('sector');
+    analytics('laura_demo_started', 'hero_primary_cta', 'hero_primary_cta');
+    void remember({ action: 'intent', commercialState: 'INTERESTED' });
+    setState('INTERESTED');
+  }, []);
+
+  useEffect(() => {
     const visitor = identity();
     void fetch(`/api/conversion/experiment?anonymousId=${encodeURIComponent(visitor.anonymousId)}`)
       .then((response) => response.ok ? response.json() : null)
@@ -148,36 +170,51 @@ export function LauraSalesAssistant() {
   }, []);
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('laura_chat') !== '1') return;
-    activated.current = true;
-    setVisible(true);
-    setStep('sector');
-    analytics('laura_demo_started', 'hero_primary_cta', 'hero_primary_cta');
-    void remember({ action: 'intent', commercialState: 'INTERESTED' });
-    setState('INTERESTED');
-  }, []);
-
-  useEffect(() => {
-    const reveal = (reason: 'timer' | 'scroll') => {
-      if (activated.current) return;
+    const reveal = (reason: Intervention) => {
+      if (activated.current && step !== 'welcome') return;
       activated.current = true;
       setVisible(true);
+      setOpeningMessage(interventionCopy[reason]);
+      setExitCopy(reason === 'exit');
       analytics('laura_presented', reason, `presented:${reason}`);
       void remember({ action: 'presented', commercialState: state }).then((data) => setVisitCount(data?.conversation?.visit_count ?? 0));
     };
-    const timer = window.setTimeout(() => reveal('timer'), 4000);
+    const timer = window.setTimeout(() => reveal('timer'), 12_000);
     const onScroll = () => {
       const maximum = document.documentElement.scrollHeight - window.innerHeight;
       if (maximum > 0 && window.scrollY / maximum >= 0.4) reveal('scroll');
     };
+    const onPointerMove = (event: MouseEvent) => {
+      const previous = lastPointer.current;
+      lastPointer.current = { x: event.clientX, y: event.clientY };
+      if (!previous || activated.current) return;
+      pointerDistance.current += Math.hypot(event.clientX - previous.x, event.clientY - previous.y);
+      if (pointerDistance.current >= 900) reveal('comparison');
+    };
     const onExit = (event: MouseEvent) => {
       if (event.clientY > 0 || step === 'done') return;
-      setExitCopy(true); setVisible(true);
+      reveal('exit');
       analytics('laura_exit_intent', 'before_leave', 'exit_intent');
     };
+    const observers = ['preguntas', 'precio'].map((id) => {
+      const element = document.getElementById(id);
+      if (!element) return null;
+      const observer = new IntersectionObserver(([entry]) => {
+        if (entry?.isIntersecting) reveal(id === 'preguntas' ? 'faq' : 'price');
+      }, { threshold: 0.45 });
+      observer.observe(element);
+      return observer;
+    });
     window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('mousemove', onPointerMove, { passive: true });
     document.addEventListener('mouseout', onExit);
-    return () => { window.clearTimeout(timer); window.removeEventListener('scroll', onScroll); document.removeEventListener('mouseout', onExit); };
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('mousemove', onPointerMove);
+      document.removeEventListener('mouseout', onExit);
+      observers.forEach((observer) => observer?.disconnect());
+    };
   }, [state, step]);
 
   useEffect(() => {
@@ -253,7 +290,7 @@ export function LauraSalesAssistant() {
   const priceObjection = objection && /(car|precio|coste|costoso)/i.test(objection);
   return <aside id="hablar-con-laura" className="fixed bottom-5 right-4 z-[60] w-[min(92vw,400px)] rounded-[2rem] border border-[var(--line)] bg-[var(--card)] p-5 text-[var(--fg)] shadow-2xl" aria-label="Hablar con Laura">
     <div className="flex items-start gap-3">{laura && <EmployeeAvatar portrait={laura.portrait} name="Laura" className="h-12 w-12 shrink-0 rounded-2xl" objectPosition={laura.portraitPosition} />}<div className="min-w-0 flex-1"><p className="text-sm font-semibold">Laura · Recepcionista IA</p><p className="mt-0.5 text-xs text-[var(--muted)]">Estoy aquí para ayudarte a decidir.</p></div><button type="button" onClick={() => setVisible(false)} className="grid h-8 w-8 place-items-center rounded-full border border-[var(--line)]" aria-label="Cerrar conversación"><X size={15}/></button></div>
-    {step === 'welcome' && <div className="mt-5"><p className="text-[15px] leading-6">{exitCopy ? 'Antes de irte… ¿quieres que te prepare gratis qué empleados contrataría para tu empresa?' : visitCount >= 3 ? 'Creo que ya has visto cómo funciona. ¿Quieres activarlo ahora?' : state === 'COLD' ? openingMessage : stateCopy[state]}</p><button type="button" onClick={start} className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#ccff00] px-4 py-2.5 text-sm font-semibold text-[#111315]">{state === 'COLD' ? 'Hablar con Laura' : 'Ver mi recomendación'} <MessageCircle size={15}/></button></div>}
+    {step === 'welcome' && <div className="mt-5"><p className="text-[15px] leading-6">{exitCopy ? interventionCopy.exit : visitCount >= 3 ? 'Creo que ya has visto cómo funciona. ¿Quieres activarlo ahora?' : state === 'COLD' ? openingMessage : stateCopy[state]}</p><div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={start} className="inline-flex items-center gap-2 rounded-full bg-[#ccff00] px-4 py-2.5 text-sm font-semibold text-[#111315]">Quiero mi recomendación <MessageCircle size={15}/></button><button type="button" onClick={() => { setVisible(false); analytics('laura_prompt_dismissed', 'not_now', 'prompt_dismissed'); }} className="rounded-full border border-[var(--line)] px-4 py-2.5 text-sm font-medium">Ahora no</button></div></div>}
     {step === 'sector' && <Choice title="¿A qué se dedica tu empresa?" choices={options.sector} onSelect={(value) => selectAnswer('sector', value)} />}
     {step === 'size' && <Choice title="¿Cuántas personas trabajan contigo?" choices={options.size} onSelect={(value) => selectAnswer('size', value)} />}
     {step === 'problem' && <Choice title="¿Qué te quita más tiempo ahora?" choices={options.problem.map(([value, label]) => ({ value, label }))} onSelect={(value) => selectAnswer('problem', value)} />}

@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Sparkles,
   Users,
+  X,
 } from 'lucide-react';
 import { EmployeeAvatar } from '@/components/employee-avatar';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -126,7 +127,7 @@ export default function Home() {
         </div>
       </Section>
 
-      <section className="border-y border-[var(--line)] bg-black/[.018] dark:bg-white/[.018]">
+      <section id="precio" className="border-y border-[var(--line)] bg-black/[.018] dark:bg-white/[.018]">
         <Section>
           <div className="grid gap-10 lg:grid-cols-[.85fr_1.15fr] lg:items-center">
             <div>
@@ -142,6 +143,7 @@ export default function Home() {
               <div className="border-t border-[var(--line)] bg-[#f8ffe9] px-5 py-4 text-sm font-semibold text-[#486500] dark:bg-[#202900] dark:text-[#d5f899] sm:px-7">Diferencia orientativa: 1.503 €/mes antes de costes adicionales de contratación.</div>
             </div>
           </div>
+          <SavingsCalculator />
         </Section>
       </section>
 
@@ -208,9 +210,32 @@ function HeroConversation() {
 function Proof({ icon: Icon, title, detail }: { icon: typeof PhoneCall; title: string; detail: string }) { return <div className="flex gap-3"><Icon className="mt-0.5 shrink-0 text-[#ccff00]" size={20} /><div><p className="font-semibold">{title}</p><p className="mt-1 text-sm leading-5 text-white/62">{detail}</p></div></div>; }
 
 function LiveWorkflow() {
-  const steps = [['Cliente', '“¿Podéis atenderme esta semana?”'], ['Laura', 'Recoge la necesidad y propone una cita'], ['Carlos', 'Recibe la oportunidad y prepara el seguimiento'], ['Tu empresa', 'Decide y continúa la conversación']];
-  return <div className="mt-10 overflow-hidden rounded-[2rem] border border-[var(--line)] bg-[var(--card)]"><div className="flex flex-col justify-between gap-2 border-b border-[var(--line)] px-5 py-5 sm:flex-row sm:items-center sm:px-7"><div><p className="eyebrow">DEMO</p><h3 className="mt-1 text-xl font-semibold">Así se mueve una oportunidad</h3></div><span className="rounded-full bg-[#fff4c2] px-3 py-1.5 text-xs font-medium text-[#6e5a00] dark:bg-[#3d3300] dark:text-[#ffe78a]">Ejemplo de funcionamiento</span></div><ol className="grid divide-y divide-[var(--line)] md:grid-cols-4 md:divide-x md:divide-y-0">{steps.map(([name, detail], index) => <li key={name} className="relative p-6"><span className="grid h-9 w-9 place-items-center rounded-full bg-[#efffcf] text-sm font-bold text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]">{index + 1}</span><p className="mt-8 font-semibold">{name}</p><p className="mt-2 text-sm leading-6 text-[var(--muted)]">{detail}</p></li>)}</ol></div>;
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const steps = [['Cliente', '“¿Podéis atenderme esta semana?”'], ['Laura', 'Clasifica la necesidad y propone una cita'], ['Carlos', 'Recibe la oportunidad y prepara el seguimiento'], ['Marta', 'Prepara el presupuesto cuando corresponde'], ['Tu empresa', 'Revisa y continúa la decisión']];
+  useEffect(() => {
+    if (!open) return;
+    const timer = window.setInterval(() => setActive((current) => (current + 1) % steps.length), 2600);
+    return () => window.clearInterval(timer);
+  }, [open, steps.length]);
+  const office = <div className="fixed inset-0 z-[70] overflow-y-auto bg-[#101210]/95 p-4 text-white backdrop-blur-sm sm:p-8" role="dialog" aria-modal="true" aria-label="Demo: Laura trabajando"><div className="mx-auto max-w-6xl rounded-[2rem] border border-white/10 bg-[#171a17] p-5 shadow-2xl sm:p-8"><div className="flex items-start justify-between gap-5"><div><p className="font-mono text-xs uppercase tracking-[.16em] text-[#ccff00]">Demostración</p><h3 className="mt-2 text-3xl font-semibold tracking-[-.05em]">La oficina de Laura</h3><p className="mt-2 max-w-2xl text-sm leading-6 text-white/60">Ejemplo visual. No usa datos de clientes ni ejecuta acciones reales.</p></div><button type="button" onClick={() => setOpen(false)} className="grid h-10 w-10 place-items-center rounded-full border border-white/15" aria-label="Cerrar demo"><X size={18} /></button></div><div className="mt-8 grid gap-4 lg:grid-cols-[1.25fr_.75fr]"><div className="rounded-3xl border border-white/10 bg-black/20 p-4"><div className="flex items-center justify-between border-b border-white/10 pb-4"><span className="font-semibold">Actividad de la empresa</span><span className="rounded-full bg-[#293500] px-3 py-1 text-xs text-[#d5f899]">Trabajando</span></div><ol className="mt-3 grid gap-2">{steps.map(([name, detail], index) => <li key={name} className={`flex items-center gap-4 rounded-2xl p-4 transition ${index === active ? 'bg-[#efffcf] text-[#111315]' : index < active ? 'bg-white/5 text-white/70' : 'text-white/40'}`}><span className={`grid h-8 w-8 place-items-center rounded-full text-xs font-bold ${index === active ? 'bg-[#111315] text-[#ccff00]' : 'bg-white/10'}`}>{index + 1}</span><div><p className="font-semibold">{name}</p><p className="mt-1 text-sm opacity-75">{detail}</p></div>{index === active && <Sparkles className="ml-auto" size={18} />}</li>)}</ol></div><aside className="rounded-3xl border border-white/10 bg-black/20 p-5"><EmployeeAvatar portrait="/employees/laura.jpg" name="Laura" objectPosition="50% 22%" className="h-16 w-16" /><p className="mt-5 text-lg font-semibold">Laura organiza la primera respuesta</p><p className="mt-2 text-sm leading-6 text-white/60">Tú eliges qué conecta tu empresa. El equipo comparte el contexto para que la conversación no se pierda.</p><Link href="/?laura_chat=1#hablar-con-laura" onClick={() => setOpen(false)} className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#ccff00] px-4 py-3 text-sm font-semibold text-[#111315]">Hablar con Laura <ArrowRight size={15} /></Link></aside></div></div></div>;
+  return <><div className="mt-10 overflow-hidden rounded-[2rem] border border-[var(--line)] bg-[var(--card)]"><div className="flex flex-col justify-between gap-3 border-b border-[var(--line)] px-5 py-5 sm:flex-row sm:items-center sm:px-7"><div><p className="eyebrow">DEMO</p><h3 className="mt-1 text-xl font-semibold">Así se mueve una oportunidad</h3></div><button type="button" onClick={() => setOpen(true)} data-e24-track="office_demo_opened" data-e24-zone="live_workflow" className="inline-flex items-center gap-2 rounded-full bg-[#111315] px-4 py-2.5 text-sm font-semibold text-white dark:bg-[#f4f5f0] dark:text-[#111315]">Ver a Laura trabajando <ArrowRight size={15} /></button></div><ol className="grid divide-y divide-[var(--line)] md:grid-cols-5 md:divide-x md:divide-y-0">{steps.map(([name, detail], index) => <li key={name} className="relative p-5"><span className="grid h-9 w-9 place-items-center rounded-full bg-[#efffcf] text-sm font-bold text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]">{index + 1}</span><p className="mt-7 font-semibold">{name}</p><p className="mt-2 text-sm leading-6 text-[var(--muted)]">{detail}</p></li>)}</ol></div>{open && office}</>;
 }
+
+function SavingsCalculator() {
+  const [sector, setSector] = useState('Servicios');
+  const [people, setPeople] = useState('2–5');
+  const [calls, setCalls] = useState(10);
+  const minutesPerCall = 4;
+  const workingDays = 22;
+  const hourlyValue = people === 'Más de 20' ? 26 : people === '6–20' ? 23 : people === '2–5' ? 20 : 17;
+  const monthlyHours = Math.round((calls * minutesPerCall * workingDays) / 60);
+  const timeValue = monthlyHours * hourlyValue;
+  const net = Math.max(0, timeValue - 97);
+  return <article className="mt-10 rounded-[2rem] border border-[#cfe69a] bg-[#f8ffe9] p-5 dark:border-[#405422] dark:bg-[#202900] sm:p-7"><div className="grid gap-8 lg:grid-cols-[.85fr_1.15fr]"><div><p className="eyebrow">Calcula tu caso</p><h3 className="mt-2 text-3xl font-semibold tracking-[-.05em]">¿Qué puede recuperar Laura en tu empresa?</h3><p className="mt-3 text-sm leading-6 text-[var(--muted)]">Estimación modificable: {minutesPerCall} min por llamada, {workingDays} días laborables y valor/hora según tamaño de equipo. No es una promesa de ahorro.</p><div className="mt-6 grid gap-3"><label className="text-sm font-medium">Sector<select value={sector} onChange={(event) => setSector(event.target.value)} className="input mt-2 w-full"><option>Servicios</option><option>Construcción</option><option>Inmobiliaria</option><option>Clínica</option><option>Restaurante</option></select></label><label className="text-sm font-medium">Personas en tu empresa<select value={people} onChange={(event) => setPeople(event.target.value)} className="input mt-2 w-full"><option>Solo yo</option><option>2–5</option><option>6–20</option><option>Más de 20</option></select></label><label className="text-sm font-medium">Llamadas al día: <b>{calls}</b><input aria-label="Llamadas al día" type="range" min="1" max="40" value={calls} onChange={(event) => setCalls(Number(event.target.value))} className="mt-3 w-full accent-[#789500]" /></label></div></div><div className="grid content-center gap-3 sm:grid-cols-2"><Metric label="Horas que podrías recuperar" value={`${monthlyHours} h/mes`} /><Metric label="Valor de ese tiempo" value={`${timeValue.toLocaleString('es-ES')} €/mes`} /><Metric label="Laura" value="97 €/mes" /><Metric label="Diferencia estimada" value={`${net.toLocaleString('es-ES')} €/mes`} highlight /><p className="sm:col-span-2 text-xs leading-5 text-[var(--muted)]">Cálculo para {sector}. La disponibilidad real y el ahorro dependen de tus llamadas, procesos y configuración.</p><Link href="/?laura_chat=1#hablar-con-laura" data-e24-track="calculator_talk_laura" data-e24-zone="savings_calculator" className="sm:col-span-2 inline-flex items-center justify-center gap-2 rounded-full bg-[#111315] px-5 py-3 text-sm font-semibold text-white dark:bg-[#f4f5f0] dark:text-[#111315]">Quiero mi recomendación <ArrowRight size={15} /></Link></div></div></article>;
+}
+
+function Metric({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) { return <div className={`rounded-2xl p-4 ${highlight ? 'bg-[#111315] text-white dark:bg-[#ccff00] dark:text-[#111315]' : 'bg-white/80 dark:bg-black/20'}`}><p className="text-xs opacity-65">{label}</p><p className="mt-2 text-xl font-semibold">{value}</p></div>; }
 
 function ComparisonRow({ name, price, availability, muted, highlight }: { name: string; price: string; availability: string; muted?: boolean; highlight?: boolean }) { return <div className={`grid grid-cols-3 gap-3 border-t border-[var(--line)] px-5 py-5 text-sm sm:px-7 ${highlight ? 'bg-[#f8ffe9] dark:bg-[#202900]' : ''}`}><span className={muted ? 'text-[var(--muted)]' : 'font-semibold'}>{name}</span><span className={highlight ? 'font-semibold text-[#486500] dark:text-[#d5f899]' : 'text-[var(--muted)]'}>{price}</span><span className="text-[var(--muted)]">{availability}</span></div>; }
 
