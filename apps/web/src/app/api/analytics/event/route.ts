@@ -49,6 +49,8 @@ const allowed = new Set([
   'whatsapp_converted',
   'whatsapp_escalated',
   'whatsapp_lead_created',
+  'onboarding_step_viewed',
+  'onboarding_step_completed',
 ]);
 
 function optionalText(value: unknown, maximum = 300) {
