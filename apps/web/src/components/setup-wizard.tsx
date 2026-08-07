@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState, type ReactNode } from 'react';
 import { ArrowLeft, ArrowRight, CalendarDays, Check, ExternalLink, Headphones, Mail, MessageCircle, Phone, Sparkles, Timer } from 'lucide-react';
 import { skipGoogleCalendar } from '@/app/actions/integrations';
+import type { InstallationStatus } from '@/lib/installation-engine';
 
 type SetupStep = 'company' | 'email' | 'phone' | 'whatsapp' | 'schedule' | 'call' | 'whatsapp_test' | 'email_test' | 'quote' | 'ready';
 
@@ -16,6 +17,7 @@ interface SetupWizardProps {
   retellConnected: boolean;
   emailConnected: boolean;
   whatsappConnected: boolean;
+  installation: InstallationStatus;
   configured?: string;
   children: ReactNode;
 }
@@ -24,13 +26,14 @@ const steps: Array<{ id: SetupStep; label: string; minutes: string }> = [
   { id: 'company', label: 'Empresa', minutes: '1 min' }, { id: 'email', label: 'Correo', minutes: '1 min' }, { id: 'phone', label: 'Teléfono', minutes: '2 min' }, { id: 'whatsapp', label: 'WhatsApp', minutes: '1 min' }, { id: 'schedule', label: 'Horario', minutes: '1 min' }, { id: 'call', label: 'Prueba llamada', minutes: '1 min' }, { id: 'whatsapp_test', label: 'Prueba WhatsApp', minutes: '1 min' }, { id: 'email_test', label: 'Primer email', minutes: '1 min' }, { id: 'quote', label: 'Presupuesto', minutes: '1 min' }, { id: 'ready', label: 'Empresa lista', minutes: '—' },
 ];
 
-export function SetupWizard({ companyName, employeeName, zadarmaConnected, calendarConnected, calendarSkipped, retellConnected, emailConnected, whatsappConnected, configured, children }: SetupWizardProps) {
+export function SetupWizard({ companyName, employeeName, zadarmaConnected, calendarConnected, calendarSkipped, retellConnected, emailConnected, whatsappConnected, installation, configured, children }: SetupWizardProps) {
   const calendarReady = calendarConnected || calendarSkipped;
-  const [step, setStep] = useState<SetupStep>(emailConnected ? (zadarmaConnected ? 'whatsapp' : 'phone') : 'email');
+  const stateToStep: Record<string, SetupStep> = { company: 'company', email: 'email', phone: 'phone', whatsapp: 'whatsapp', calendar: 'schedule', call: 'call', 'whatsapp-proof': 'whatsapp_test', quote: 'quote' };
+  const [step, setStep] = useState<SetupStep>(installation.isOperational ? 'ready' : (stateToStep[installation.nextAction?.id ?? 'company'] ?? 'company'));
   const index = steps.findIndex((item) => item.id === step);
-  const progress = Math.round(((index + 1) / steps.length) * 100);
-  const completed: Record<SetupStep, boolean> = { company: true, email: emailConnected, phone: zadarmaConnected, whatsapp: whatsappConnected, schedule: calendarReady, call: retellConnected, whatsapp_test: whatsappConnected, email_test: emailConnected, quote: false, ready: false };
-  const remaining = steps.filter((item) => !completed[item.id]).length;
+  const progress = installation.progress;
+  const completed: Record<SetupStep, boolean> = { company: installation.completedSteps.some((item) => item.id === 'company'), email: installation.completedSteps.some((item) => item.id === 'email'), phone: installation.completedSteps.some((item) => item.id === 'phone'), whatsapp: installation.completedSteps.some((item) => item.id === 'whatsapp'), schedule: installation.completedSteps.some((item) => item.id === 'calendar'), call: installation.completedSteps.some((item) => item.id === 'call'), whatsapp_test: installation.completedSteps.some((item) => item.id === 'whatsapp-proof'), email_test: installation.completedSteps.some((item) => item.id === 'email'), quote: installation.completedSteps.some((item) => item.id === 'quote'), ready: installation.isOperational };
+  const remaining = installation.pendingSteps.length;
   useEffect(() => {
     const payload = JSON.stringify({ eventName: 'onboarding_step_viewed', path: '/onboarding', source: 'installation_assistant', idempotencyKey: `onboarding:view:${step}`, metadata: { action: 'onboarding_step', label: step } });
     void fetch('/api/analytics/event', { method: 'POST', headers: { 'content-type': 'application/json' }, body: payload, keepalive: true }).catch(() => undefined);
@@ -46,14 +49,14 @@ export function SetupWizard({ companyName, employeeName, zadarmaConnected, calen
       </header>
 
       <section className="mt-9 rounded-3xl border border-[var(--line)] bg-[var(--card)] p-5 md:p-7" aria-label="Progreso de configuración">
-        <div className="flex items-center justify-between gap-4 text-sm"><span className="font-semibold">{progress}% preparado</span><span className="text-[var(--muted)]">{remaining ? `${remaining} pasos · menos de 10 min` : 'Empresa lista'}</span></div>
+        <div className="flex items-center justify-between gap-4 text-sm"><span className="font-semibold">{progress}% preparado</span><span className="text-[var(--muted)]">{installation.isOperational ? 'Empresa operativa' : `${remaining} pendientes · ~${installation.estimatedRemainingMinutes} min`}</span></div>
         <div className="mt-4 h-2 overflow-hidden rounded-full bg-black/10 dark:bg-white/10"><div className="h-full rounded-full bg-[#ccff00] transition-all duration-500" style={{ width: `${progress}%` }} /></div>
         <ol className="mt-6 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
           {steps.map((item, itemIndex) => <li key={item.id}><button type="button" onClick={() => setStep(item.id)} className={`flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-left text-xs transition ${item.id === step ? 'bg-[#111315] text-white dark:bg-[#f4f5f0] dark:text-[#111315]' : 'text-[var(--muted)] hover:bg-black/5 dark:hover:bg-white/5'}`}><span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full ${completed[item.id] ? 'bg-[#ccff00] text-[#111315]' : 'bg-black/10 dark:bg-white/10'}`}>{completed[item.id] ? <Check size={13} /> : itemIndex + 1}</span><span>{item.label}<small className="block opacity-60">{item.minutes}</small></span></button></li>)}
         </ol>
       </section>
 
-      {configured && <p role="status" className="mt-6 rounded-2xl bg-[#efffcf] p-4 text-sm text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]">{configured === 'calendar_skipped' ? 'Puedes conectar Calendar más adelante. Seguimos con tu Recepcionista.' : 'Conexión verificada. Seguimos con tu Recepcionista.'}</p>}
+      {configured && <p role="status" className="mt-6 rounded-2xl bg-[#efffcf] p-4 text-sm text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]">{configured === 'calendar_skipped' ? 'Puedes conectar Calendar más adelante. Seguimos con tu Recepcionista.' : 'Conexión verificada. He revisado tu empresa y seguimos con el siguiente requisito real.'}</p>}
       <div className="mt-8">{step === 'company' && <EmployeeStep employeeName={employeeName} onBack={() => setStep('schedule')}>{children}</EmployeeStep>}{step === 'email' && <IntegrationStep icon={Mail} title="Conecta tu correo" gain="Podrás enviar seguimiento y presupuestos desde tu empresa." href="/app/integraciones/brevo" connected={emailConnected} next={() => setStep('phone')} />}{step === 'phone' && <ZadarmaStep connected={zadarmaConnected} onNext={() => setStep('whatsapp')} />}{step === 'whatsapp' && <IntegrationStep icon={MessageCircle} title="Conecta WhatsApp" gain="Responderás a tus clientes desde el canal que ya utilizan." href="/app/integraciones/whatsapp_meta" connected={whatsappConnected} next={() => setStep('schedule')} />}{step === 'schedule' && <CalendarStep connected={calendarConnected} skipped={calendarSkipped} onBack={() => setStep('whatsapp')} onNext={() => setStep('call')} />}{step === 'call' && <TestStep retellConnected={retellConnected} onBack={() => setStep('schedule')} />}{step === 'whatsapp_test' && <IntegrationStep icon={MessageCircle} title="Prueba WhatsApp" gain="Envía un mensaje de prueba y confirma que tu equipo responde." href="/app/whatsapp" connected={whatsappConnected} next={() => setStep('email_test')} />}{step === 'email_test' && <IntegrationStep icon={Mail} title="Envía tu primer email" gain="Verás un correo enviado desde tu espacio de empresa." href="/app/especialista-email" connected={emailConnected} next={() => setStep('quote')} />}{step === 'quote' && <IntegrationStep icon={Timer} title="Prepara tu primer presupuesto" gain="Comprueba cómo tu equipo prepara una propuesta rentable." href="/app/presupuestos" connected={false} next={() => setStep('ready')} />}{step === 'ready' && <ReadyStep companyName={companyName} />}</div>
     </main>
   );
