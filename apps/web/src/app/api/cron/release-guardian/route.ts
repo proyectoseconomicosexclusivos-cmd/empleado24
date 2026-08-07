@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { runReleaseGuardian, type GuardianMode } from '@/lib/release-guardian';
 import { refreshAnalyticsDaily } from '@/lib/analytics-rollup';
+import { buildCeoBrief, weeklyCeoEmail } from '@/lib/ceo-insights';
+import { notifyOwner } from '@/lib/owner-notifications';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,6 +21,16 @@ export async function GET(request: Request) {
     catch (error) {
       return NextResponse.json({ ...result, analytics: { error: error instanceof Error ? error.message : 'analytics_rollup_failed' } }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
     }
+  }
+  if (mode === 'weekly' && process.env.CEO_WEEKLY_REPORT_ENABLED === 'true') {
+    const brief = await buildCeoBrief();
+    await notifyOwner({
+      event: 'report.ceo.weekly',
+      subject: '📊 CEO IA · informe semanal',
+      message: weeklyCeoEmail(brief),
+      idempotencyKey: `ceo-weekly:${new Date().toISOString().slice(0, 10)}`,
+      cooldownSeconds: 604800,
+    });
   }
   return NextResponse.json({ ...result, analytics }, { status: result.status === 'ok' ? 200 : 503, headers: { 'Cache-Control': 'no-store' } });
 }

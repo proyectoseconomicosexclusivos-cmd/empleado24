@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Activity, BarChart3, Building2, ClipboardCheck, ShieldCheck } from 'lucide-react';
+import { Activity, BarChart3, BrainCircuit, Building2, ClipboardCheck, ShieldCheck } from 'lucide-react';
 import { SignOutButton } from '@/components/sign-out-button';
 import { OperationsService } from '@/services/operations-service';
 
@@ -23,7 +23,8 @@ export default async function OperationsLayout({ children }: { children: React.R
       <div className="mx-auto grid max-w-[1600px] md:grid-cols-[210px_1fr]">
         <aside className="hidden min-h-[calc(100vh-65px)] border-r border-white/10 p-5 md:block">
           <nav className="grid gap-1 text-sm">
-            <Link href="/ops" className="flex items-center gap-3 rounded-xl bg-white/8 px-3 py-2.5"><Activity size={16} className="text-[#ccff00]" /> Operaciones</Link>
+            <Link href="/ops/ceo" className="flex items-center gap-3 rounded-xl bg-white/8 px-3 py-2.5"><BrainCircuit size={16} className="text-[#ccff00]" /> CEO IA</Link>
+            <Link href="/ops" className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-white/8"><Activity size={16} className="text-[#ccff00]" /> Operaciones</Link>
             <Link href="/ops/business" className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-white/8"><BarChart3 size={16} className="text-[#ccff00]" /> CEO Dashboard</Link>
             <Link href="/ops/audit" className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-white/8"><ClipboardCheck size={16} className="text-[#ccff00]" /> Auditoría</Link>
             <span className="mt-1 flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-white/35" aria-disabled="true"><Building2 size={16} /> Sin impersonación</span>
