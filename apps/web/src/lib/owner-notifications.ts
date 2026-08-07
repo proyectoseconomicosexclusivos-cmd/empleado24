@@ -10,6 +10,7 @@ type OwnerNotification = {
   event?: string;
   idempotencyKey?: string;
   cooldownSeconds?: number;
+  channels?: { email?: boolean; telegram?: boolean };
 };
 
 function commercialNotification(input: OwnerNotification) {
@@ -125,7 +126,7 @@ export async function notifyOwner(input: OwnerNotification) {
     return { delivered: false, channels: [], reason: 'cooldown' as const };
   }
 
-  if (ownerEmail && brevoKey && senderEmail) {
+  if (input.channels?.email !== false && ownerEmail && brevoKey && senderEmail) {
     try {
       const response = await postJson('https://api.brevo.com/v3/smtp/email', {
         sender: { email: senderEmail, name: 'Empleado24' },
@@ -140,7 +141,7 @@ export async function notifyOwner(input: OwnerNotification) {
     }
   }
 
-  if (telegramToken && telegramChatId) {
+  if (input.channels?.telegram !== false && telegramToken && telegramChatId) {
     try {
       const response = await postJson(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
         chat_id: telegramChatId,
