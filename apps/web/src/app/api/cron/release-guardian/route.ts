@@ -8,6 +8,15 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
+function isoWeekKey(date = new Date()) {
+  const value = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const day = value.getUTCDay() || 7;
+  value.setUTCDate(value.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(value.getUTCFullYear(), 0, 1));
+  const week = Math.ceil((((value.getTime() - yearStart.getTime()) / 86_400_000) + 1) / 7);
+  return `${value.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+}
+
 export async function GET(request: Request) {
   if (!process.env.CRON_SECRET || request.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`)
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
@@ -28,8 +37,9 @@ export async function GET(request: Request) {
       event: 'report.ceo.weekly',
       subject: '📊 CEO IA · informe semanal',
       message: weeklyCeoEmail(brief),
-      idempotencyKey: `ceo-weekly:${new Date().toISOString().slice(0, 10)}`,
+      idempotencyKey: `ceo-weekly:${isoWeekKey()}`,
       cooldownSeconds: 604800,
+      channels: { email: true, telegram: false },
     });
   }
   return NextResponse.json({ ...result, analytics }, { status: result.status === 'ok' ? 200 : 503, headers: { 'Cache-Control': 'no-store' } });
