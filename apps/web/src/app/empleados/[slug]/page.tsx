@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   ArrowRight,
   Check,
@@ -10,6 +11,7 @@ import {
 } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { EmployeeAvatar } from '@/components/employee-avatar';
+import { EmployeeIdentity } from '@/components/employee-identity';
 import { employeeBySlug, hiringHref } from '@/lib/employee-showcase';
 
 export default async function EmployeeProfilePage({
@@ -57,6 +59,7 @@ export default async function EmployeeProfilePage({
           <h1 className="mt-3 text-5xl font-semibold tracking-[-.07em] md:text-6xl">
             {employee.person}
           </h1>
+          <EmployeeIdentity employee={employee} className="mt-4" />
           <p className="mt-2 text-xl font-medium text-[#789500]">{employee.name}</p>
           <p className="mt-5 text-xl leading-8 text-[var(--muted)]">“{employee.personalIntro}”</p>
           <p className="mt-7 max-w-2xl leading-7 text-[var(--muted)]">{employee.summary}</p>
@@ -112,12 +115,27 @@ export default async function EmployeeProfilePage({
               Espacio preparado para una demostración real. Verás una conversación, una acción y el
               resultado que queda guardado en tu empresa.
             </p>
-            <div className="mt-7 grid aspect-video place-items-center rounded-2xl border border-white/15 bg-white/[.06] text-center">
-              <div>
-                <CirclePlay className="mx-auto text-[#ccff00]" size={36} />
-                <p className="mt-3 text-sm font-medium">Demo próximamente</p>
-              </div>
-            </div>
+            <Link
+              href={`/demo?employee=${employee.slug}`}
+              className="group relative mt-7 block aspect-video overflow-hidden rounded-2xl border border-white/15 text-center"
+            >
+              <Image
+                src="/images/empleado24-team-studio.jpg"
+                alt={`Demostración visual del equipo junto a ${employee.person}`}
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-cover opacity-60 transition duration-700 group-hover:scale-[1.03] group-hover:opacity-75"
+              />
+              <span className="absolute inset-0 grid place-items-center bg-black/25">
+                <span className="rounded-full border border-white/25 bg-black/35 px-5 py-3 text-sm font-semibold backdrop-blur">
+                  <CirclePlay className="mr-2 inline text-[#ccff00]" size={19} />
+                  Ver a {employee.person} trabajando
+                </span>
+              </span>
+              <span className="absolute bottom-3 left-3 rounded-full bg-black/55 px-3 py-1 text-[10px] font-semibold uppercase tracking-[.12em] text-white/80">
+                Simulación visual · sin datos reales
+              </span>
+            </Link>
           </article>
           <article className="surface rounded-[2rem] p-7">
             <p className="eyebrow">Sectores donde encaja mejor</p>

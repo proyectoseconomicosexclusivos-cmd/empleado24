@@ -15,6 +15,8 @@ import {
   X,
 } from 'lucide-react';
 import { EmployeeAvatar } from '@/components/employee-avatar';
+import { EmployeeIdentity } from '@/components/employee-identity';
+import { TeamIntro } from '@/components/team-intro';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { buttonVariants } from '@/components/ui/button';
 import { employeeShowcase, hiringHref } from '@/lib/employee-showcase';
@@ -99,7 +101,7 @@ export default function Home() {
                 ))}
               </div>
             </motion.div>
-            <HeroConversation />
+            <TeamIntro />
           </div>
         </Section>
       </section>
@@ -199,14 +201,6 @@ export default function Home() {
   );
 }
 
-function HeroConversation() {
-  return <motion.div {...reveal} className="overflow-hidden rounded-[2rem] border border-[#cfe69a] bg-[#f9ffe9] shadow-2xl shadow-black/10 dark:border-[#405422] dark:bg-[#202900]">
-    <div className="flex items-center gap-3 border-b border-[#cfe69a] px-5 py-4 dark:border-[#405422]"><EmployeeAvatar portrait="/employees/laura.jpg" name="Laura" objectPosition="50% 22%" className="h-10 w-10" /><div><p className="font-semibold">Laura · Recepcionista</p><p className="text-xs text-[#486500] dark:text-[#d5f899]">Disponible para tu empresa</p></div><span className="ml-auto h-2.5 w-2.5 rounded-full bg-[#789500]" /></div>
-    <div className="space-y-4 p-5 sm:p-7"><div className="max-w-[88%] rounded-2xl rounded-tl-sm bg-white p-4 text-sm leading-6 shadow-sm dark:bg-[#111315]">Hola, soy Laura. ¿A qué se dedica tu empresa?</div><div className="ml-auto max-w-[88%] rounded-2xl rounded-tr-sm bg-[#111315] p-4 text-sm leading-6 text-white">Tenemos muchas llamadas y no llegamos a todas.</div><div className="max-w-[92%] rounded-2xl rounded-tl-sm bg-white p-4 text-sm leading-6 shadow-sm dark:bg-[#111315]">Puedo atenderlas, recoger lo importante y organizar citas para que no pierdas oportunidades.</div></div>
-    <div className="border-t border-[#cfe69a] px-5 py-4 dark:border-[#405422]"><Link href="/?laura_chat=1#hablar-con-laura" data-e24-track="hero_conversation_open" data-e24-zone="hero_conversation" className="inline-flex items-center gap-2 text-sm font-semibold text-[#486500] underline underline-offset-4 dark:text-[#d5f899]">Hablar con Laura sobre mi empresa <ArrowRight size={15} /></Link></div>
-  </motion.div>;
-}
-
 function Proof({ icon: Icon, title, detail }: { icon: typeof PhoneCall; title: string; detail: string }) { return <div className="flex gap-3"><Icon className="mt-0.5 shrink-0 text-[#ccff00]" size={20} /><div><p className="font-semibold">{title}</p><p className="mt-1 text-sm leading-5 text-white/62">{detail}</p></div></div>; }
 
 function LiveWorkflow() {
@@ -242,5 +236,5 @@ function ComparisonRow({ name, price, availability, muted, highlight }: { name: 
 function ChoiceCard({ number, title, detail, cta, href, active }: { number: string; title: string; detail: string; cta: string; href: string; active?: boolean }) { return <article className={`rounded-[2rem] border p-6 ${active ? 'border-[#b5d95a] bg-[#f9ffe9] dark:border-[#405422] dark:bg-[#202900]' : 'border-[var(--line)] bg-[var(--card)]'}`}><span className="font-mono text-xs text-[#789500]">{number}</span><h3 className="mt-8 text-2xl font-semibold">{title}</h3><p className="mt-3 min-h-12 text-sm leading-6 text-[var(--muted)]">{detail}</p><Link href={href} data-e24-track={`choice_${number}`} data-e24-zone="choice" className="mt-7 inline-flex items-center gap-1 text-sm font-semibold underline underline-offset-4">{cta} <ArrowRight size={14} /></Link></article>; }
 
 function EmployeeCard({ employee }: { employee: (typeof employeeShowcase)[number] }) {
-  return <motion.article {...reveal} className="surface group overflow-hidden rounded-[2rem] p-3 transition hover:-translate-y-1 hover:shadow-2xl hover:shadow-black/10"><div className="relative aspect-[1.32/1] overflow-hidden rounded-[1.45rem] bg-[#dfe8c2]"><EmployeeAvatar portrait={employee.portrait} name={employee.person} objectPosition={employee.portraitPosition} className="h-full w-full rounded-none transition duration-500 group-hover:scale-[1.03]" /><span className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1.5 text-xs font-medium text-white backdrop-blur">{employee.person} · Disponible</span></div><div className="p-4 pb-3"><p className="text-xs font-semibold uppercase tracking-[.13em] text-[#789500]">{employee.specialty}</p><h3 className="mt-2 text-2xl font-semibold tracking-[-.05em]">{employee.name}</h3><p className="mt-2 min-h-12 text-sm leading-6 text-[var(--muted)]">{employee.role}</p><div className="mt-5 flex items-center justify-between border-t border-[var(--line)] pt-4"><span className="text-lg font-semibold">{employee.price}</span><div className="flex gap-2"><Link href={`/empleados/${employee.slug}`} data-e24-track={`employee_info_${employee.slug}`} data-e24-zone="employee_card" className="rounded-full border border-[var(--line)] px-3 py-2 text-sm font-semibold">Ver más</Link><Link href={hiringHref(employee)} data-e24-track={`employee_contract_${employee.slug}`} data-e24-zone="employee_card" className="inline-flex items-center gap-1 rounded-full bg-[#111315] px-3 py-2 text-sm font-semibold text-white dark:bg-[#f4f5f0] dark:text-[#111315]">Contratar <ArrowRight size={14} /></Link></div></div></div></motion.article>;
+  return <motion.article {...reveal} className="premium-card surface group overflow-hidden rounded-[2rem] p-3"><div className="relative aspect-[1.32/1] overflow-hidden rounded-[1.45rem] bg-[#dfe8c2]"><EmployeeAvatar portrait={employee.portrait} name={employee.person} objectPosition={employee.portraitPosition} className="h-full w-full rounded-none transition duration-700 group-hover:scale-[1.035]" /><span className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1.5 text-xs font-medium text-white backdrop-blur">{employee.person} · Disponible</span></div><div className="p-4 pb-3"><EmployeeIdentity employee={employee} compact /><p className="mt-4 text-xs font-semibold uppercase tracking-[.13em] text-[#789500]">{employee.specialty}</p><h3 className="mt-2 text-2xl font-semibold tracking-[-.05em]">{employee.name}</h3><p className="mt-2 min-h-12 text-sm leading-6 text-[var(--muted)]">{employee.role}</p><div className="mt-5 flex items-center justify-between border-t border-[var(--line)] pt-4"><span className="text-lg font-semibold">{employee.price}</span><div className="flex gap-2"><Link href={`/empleados/${employee.slug}`} data-e24-track={`employee_info_${employee.slug}`} data-e24-zone="employee_card" className="rounded-full border border-[var(--line)] px-3 py-2 text-sm font-semibold">Ver más</Link><Link href={hiringHref(employee)} data-e24-track={`employee_contract_${employee.slug}`} data-e24-zone="employee_card" className="inline-flex items-center gap-1 rounded-full bg-[#111315] px-3 py-2 text-sm font-semibold text-white dark:bg-[#f4f5f0] dark:text-[#111315]">Contratar <ArrowRight size={14} /></Link></div></div></div></motion.article>;
 }
