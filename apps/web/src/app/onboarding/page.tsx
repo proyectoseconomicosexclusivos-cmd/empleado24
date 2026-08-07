@@ -31,7 +31,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
 
   const integrations = integrationsResult.data ?? [];
   const connected = (provider: string) => integrations.some((item) => item.provider_key === provider && item.enabled && item.status === 'connected');
-  return <SetupWizard companyName={company.name} employeeName={employee.name} zadarmaConnected={connected('zadarma')} calendarConnected={connected('google_calendar')} calendarSkipped={calendarSkipped} retellConnected={connected('retell')} configured={query.configured}>
+  return <SetupWizard companyName={company.name} employeeName={employee.name} zadarmaConnected={connected('zadarma')} calendarConnected={connected('google_calendar')} calendarSkipped={calendarSkipped} retellConnected={connected('retell')} emailConnected={connected('brevo')} whatsappConnected={connected('whatsapp_meta')} configured={query.configured}>
     <CompanyOnboardingForm error={query.error} values={{ companyId: company.id, companyName: company.name, sector: company.sector, country: company.country, currency: company.currency, locale: company.locale, timezone: company.timezone, businessHours: company.business_hours, receptionistName: employee.name, secondaryLocales: employee.secondary_locales, description: employee.description, greeting: config?.greeting ?? null, farewell: config?.farewell ?? null, unknownAnswerPolicy: config?.unknown_answer_policy ?? null, handoffPolicy: config?.human_handoff_policy ?? null }} />
   </SetupWizard>;
 }
