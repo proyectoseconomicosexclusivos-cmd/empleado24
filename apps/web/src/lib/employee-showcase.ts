@@ -16,6 +16,13 @@ export type EmployeeShowcase = {
   price: string;
   portrait: string;
   portraitPosition?: string;
+  identity: {
+    accent: string;
+    icon: string;
+    signature: string;
+    personality: string;
+    tone: string;
+  };
   summary: string;
   benefits: string[];
   does: string[];
@@ -44,6 +51,13 @@ export const employeeShowcase: EmployeeShowcase[] = [
     price: '97 €/mes',
     portrait: '/employees/laura.jpg',
     portraitPosition: '50% 22%',
+    identity: {
+      accent: '#789500',
+      icon: '●',
+      signature: 'Atención que no se detiene',
+      personality: 'Cercana y resolutiva',
+      tone: 'Claro, cálido y profesional',
+    },
     summary:
       'Recibe llamadas, resuelve las dudas habituales y deja a tu equipo las conversaciones que necesitan una persona.',
     benefits: ['Atiende cada llamada', 'Habla como tu empresa', 'Organiza citas'],
@@ -87,6 +101,13 @@ export const employeeShowcase: EmployeeShowcase[] = [
     price: '97 €/mes',
     portrait: '/employees/david.jpg',
     portraitPosition: '50% 24%',
+    identity: {
+      accent: '#4b67bf',
+      icon: '✦',
+      signature: 'Cada contacto, bien cuidado',
+      personality: 'Metódico y atento',
+      tone: 'Sereno, preciso y amable',
+    },
     summary:
       'Prepara comunicaciones, organiza contactos y mantiene una conversación constante desde la cuenta de tu empresa.',
     benefits: ['Mensajes organizados', 'Contactos por empresa', 'Seguimiento claro'],
@@ -134,6 +155,13 @@ export const employeeShowcase: EmployeeShowcase[] = [
     price: '197 €/mes',
     portrait: '/employees/carlos.jpg',
     portraitPosition: '50% 20%',
+    identity: {
+      accent: '#a85c1d',
+      icon: '↗',
+      signature: 'El siguiente paso siempre claro',
+      personality: 'Directo y estratégico',
+      tone: 'Seguro, consultivo y concreto',
+    },
     summary:
       'Da seguimiento a cada oportunidad, prioriza las más valiosas y ayuda a que ninguna conversación comercial se enfríe.',
     benefits: ['Seguimiento constante', 'Prioriza oportunidades', 'Centro de Ventas'],
@@ -178,6 +206,13 @@ export const employeeShowcase: EmployeeShowcase[] = [
     price: '97 €/mes',
     portrait: '/employees/elena.jpg',
     portraitPosition: '50% 22%',
+    identity: {
+      accent: '#b44c7d',
+      icon: '◌',
+      signature: 'Conversaciones con contexto',
+      personality: 'Ágil y empática',
+      tone: 'Natural, atento y cercano',
+    },
     summary:
       'Responde por WhatsApp, entiende cuándo hay interés comercial y pasa cada oportunidad al miembro adecuado del equipo.',
     benefits: ['Responde todos los días', 'Detecta interés', 'Pasa oportunidades'],
@@ -222,6 +257,13 @@ export const employeeShowcase: EmployeeShowcase[] = [
     price: '197 €/mes',
     portrait: '/employees/marta.jpg',
     portraitPosition: '50% 22%',
+    identity: {
+      accent: '#397d73',
+      icon: '▦',
+      signature: 'Presupuestos con criterio',
+      personality: 'Analítica y rigurosa',
+      tone: 'Ordenado, claro y orientado a detalle',
+    },
     summary:
       'Organiza costes, márgenes y seguimientos para que prepares presupuestos consistentes sin empezar de cero.',
     benefits: ['Márgenes controlados', 'Historial por cliente', 'Seguimiento preparado'],
