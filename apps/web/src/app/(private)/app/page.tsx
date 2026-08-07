@@ -9,6 +9,7 @@ import { CallService } from '@/services/call-service';
 import { AutoRefresh } from '@/components/auto-refresh';
 import { activityMessage, employeeNextStep, employeeState, localeName, relativeTime } from '@/lib/employee-experience';
 import { ActivationChecklist } from '@/components/activation-checklist';
+import { FirstDayGuide } from '@/components/first-day-guide';
 import { createClient } from '@/lib/supabase/server';
 import { BillingActionButton } from '@/components/billing-action-button';
 import { calculatePrepaidPriceMinor } from '@empleado24/integrations/billing-provider';
@@ -70,6 +71,8 @@ export default async function AppHome() {
   const voiceConnected = (integrationsResult.data ?? []).some((integration) => integration.provider_key === 'retell' && integration.enabled && integration.status === 'connected');
   const zadarmaConnected = (integrationsResult.data ?? []).some((integration) => integration.provider_key === 'zadarma' && integration.enabled && integration.status === 'connected');
   const calendarConnected = (integrationsResult.data ?? []).some((integration) => integration.provider_key === 'google_calendar' && integration.enabled && integration.status === 'connected');
+  const whatsappConnected = (integrationsResult.data ?? []).some((integration) => integration.provider_key === 'whatsapp_meta' && integration.enabled && integration.status === 'connected');
+  const emailConnected = (integrationsResult.data ?? []).some((integration) => integration.provider_key === 'brevo' && integration.enabled && integration.status === 'connected');
   const settingsData = settingsResult.data?.data;
   const prepaidBalance = prepaidBalanceResult.data;
   const prepaidAvailableMinutes = Math.max(0, Math.floor(((prepaidBalance?.purchased_seconds ?? 0) - (prepaidBalance?.consumed_seconds ?? 0)) / 60));
@@ -99,6 +102,15 @@ export default async function AppHome() {
         { label: 'Cuéntale cómo ayudarte', detail: 'Completa su forma de hablar y la información de tu empresa.', href: '/onboarding', done: employeeReady, icon: Headphones },
         { label: 'Haz la primera llamada', detail: 'Escucha cómo atiende y confirma que todo está listo.', href: '/app/primera-llamada', done: callDashboard.totalCalls > 0, icon: PhoneCall },
       ]} />
+
+      <FirstDayGuide
+        employeeReady={employeeReady}
+        phoneReady={zadarmaConnected}
+        whatsappReady={whatsappConnected}
+        emailReady={emailConnected}
+        calendarReady={calendarConnected || calendarSkipped}
+        firstCallReady={callDashboard.totalCalls > 0}
+      />
 
       <section className="mt-8 rounded-[2rem] border border-[var(--line)] bg-[var(--card)] p-7 md:p-8" aria-labelledby="prepaid-title">
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
