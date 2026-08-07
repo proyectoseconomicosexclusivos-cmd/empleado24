@@ -123,7 +123,7 @@ export default function Home() {
         <LiveWorkflow />
         <div className="mt-8 flex flex-wrap gap-3">
           <Link href="/?laura_chat=1#hablar-con-laura" data-e24-track="workflow_try_laura" data-e24-zone="workflow" className={buttonVariants({ variant: 'lime' })}>Ver cómo lo haría Laura <ArrowRight size={15} /></Link>
-          <Link href="#equipo" className={buttonVariants({ variant: 'outline' })}>Conocer al equipo</Link>
+          <Link href="/demo" data-e24-track="workflow_company_demo" data-e24-zone="workflow" className={buttonVariants({ variant: 'outline' })}>Ver una empresa funcionando</Link>
         </div>
       </Section>
 
