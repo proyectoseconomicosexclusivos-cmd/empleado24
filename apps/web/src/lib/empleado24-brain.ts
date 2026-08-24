@@ -10,7 +10,10 @@ export type BrainEventName =
   | 'CustomerCreated' | 'EmployeeActivated' | 'EmployeePaused'
   | 'SubscriptionStarted' | 'SubscriptionCancelled' | 'PaymentCompleted'
   | 'MinutesPurchased' | 'SupportOpened' | 'SupportClosed'
-  | 'TechnicalProjectAnalyzed' | 'TechnicalQuoteDrafted';
+  | 'TechnicalProjectAnalyzed' | 'TechnicalQuoteDrafted'
+  | 'ProjectCreated' | 'ProjectFileUploaded' | 'ProjectAnalysisStarted'
+  | 'ProjectAnalysisCompleted' | 'MeasurementDetected' | 'MeasurementConfirmed'
+  | 'MeasurementEstimated' | 'BudgetDraftCreated' | 'BudgetReviewed';
 
 type CustomerInput = {
   companyId: string;
