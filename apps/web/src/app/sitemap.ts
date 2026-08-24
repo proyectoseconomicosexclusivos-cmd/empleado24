@@ -11,5 +11,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: 'https://empleado24.com/empleados/closer-ia', lastModified, changeFrequency: 'monthly', priority: 0.8 },
     { url: 'https://empleado24.com/empleados/whatsapp-ia', lastModified, changeFrequency: 'monthly', priority: 0.8 },
     { url: 'https://empleado24.com/empleados/especialista-presupuestos-ia', lastModified, changeFrequency: 'monthly', priority: 0.8 },
+    { url: 'https://empleado24.com/empleados/arquitecto-tecnico-ia', lastModified, changeFrequency: 'monthly', priority: 0.8 },
   ];
 }
