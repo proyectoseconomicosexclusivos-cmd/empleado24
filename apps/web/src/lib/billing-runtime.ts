@@ -31,8 +31,12 @@ export function billingPlan(plan: PlanRow): BillingPlan {
         ? 'employee_closer_monthly'
         : plan.plan_key === 'employee_whatsapp'
           ? 'employee_whatsapp_monthly'
+          : plan.plan_key === 'employee_technical_architect'
+            ? 'employee_technical_architect_monthly'
           : plan.plan_key === 'department_commercial'
             ? 'department_commercial_monthly'
+            : plan.plan_key === 'department_technical'
+              ? 'department_technical_monthly'
         : undefined,
     name: plan.name,
     description: plan.description,
@@ -162,7 +166,7 @@ async function syncSubscription(admin: Admin, object: Record<string, unknown>, c
     canceled_at: stripeTimestamp(object.canceled_at),
   });
   if (['trialing', 'active', 'canceling'].includes(state)) {
-    if (key === 'employee_email' || key === 'employee_budget' || key === 'employee_closer' || key === 'employee_whatsapp') await activateEmployeeForPlan(admin, current.company_id, key);
+    if (key === 'employee_email' || key === 'employee_budget' || key === 'employee_closer' || key === 'employee_whatsapp' || key === 'employee_technical_architect') await activateEmployeeForPlan(admin, current.company_id, key);
     if (departmentForPlan(key)) await activateDepartmentForPlan(admin, current.company_id, current.id, key!);
   }
 }
@@ -213,6 +217,13 @@ const employeeByPlan = {
     providerKey: 'whatsapp_meta',
     connectedTools: ['messaging', 'voice', 'email', 'calendar'],
   },
+  employee_technical_architect: {
+    employeeType: 'technical_architect',
+    name: 'Arquitecto Técnico IA',
+    description: 'Analiza planos PDF e imágenes y prepara una memoria técnica y mediciones preliminares para revisar.',
+    providerKey: 'gemini',
+    connectedTools: ['documents', 'brain', 'quotes'],
+  },
 } as const;
 
 const departmentProfiles: Record<string, { employeeType: string; name: string; description: string; providerKey: string | null; connectedTools: string[] }> = {
@@ -221,6 +232,7 @@ const departmentProfiles: Record<string, { employeeType: string; name: string; d
   closer: { employeeType: 'closer', name: 'Closer IA', description: 'Hace seguimiento de oportunidades y convierte interés en ventas.', providerKey: 'retell', connectedTools: ['voice', 'email', 'calendar'] },
   booking: { employeeType: 'booking', name: 'Booking IA', description: 'Organiza citas, cambios y recordatorios con el mismo historial de cliente.', providerKey: 'google_calendar', connectedTools: ['calendar'] },
   budget_specialist: { employeeType: 'budget_specialist', name: 'Especialista Presupuestos IA', description: 'Prepara presupuestos y coordina el seguimiento comercial.', providerKey: null, connectedTools: ['email', 'calendar'] },
+  technical_architect: { employeeType: 'technical_architect', name: 'Arquitecto Técnico IA', description: 'Analiza planos PDF e imágenes y prepara una memoria técnica y mediciones preliminares para revisar.', providerKey: 'gemini', connectedTools: ['documents', 'brain', 'quotes'] },
 };
 
 async function activateDepartmentForPlan(admin: Admin, companyId: string, subscriptionId: string, planKey: string) {
@@ -351,7 +363,7 @@ export async function processStripeEvent(event: StripeEvent) {
       const key = stringValue(metadata(object).plan_key);
       const result = await admin.from('subscriptions').update({ provider_customer_id: stringValue(object.customer), provider_subscription_id: providerSubscriptionId, plan_id: await planId(admin, key), plan_key: key, provider: 'stripe', updated_at: new Date().toISOString() }).eq('id', current.id);
       if (result.error) throw result.error;
-      if (key === 'employee_email' || key === 'employee_budget' || key === 'employee_closer' || key === 'employee_whatsapp') await activateEmployeeForPlan(admin, resolvedCompanyId, key);
+      if (key === 'employee_email' || key === 'employee_budget' || key === 'employee_closer' || key === 'employee_whatsapp' || key === 'employee_technical_architect') await activateEmployeeForPlan(admin, resolvedCompanyId, key);
       if (key && departmentForPlan(key)) await activateDepartmentForPlan(admin, resolvedCompanyId, current.id, key);
     }
   } else if (event.type.startsWith('customer.subscription.')) {
