@@ -23,7 +23,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ projectId: result.projectId, quoteId: result.quoteId });
   } catch (error) {
     const code = error instanceof Error ? error.message : 'technical_analysis_failed';
-    const message = code === 'gemini_not_configured' ? 'El análisis técnico aún no está configurado. Contacta con tu administrador.' : code === 'technical_file_invalid' || code === 'technical_file_type_not_supported' ? 'El archivo debe ser PDF, JPG, PNG o WebP y no superar 20 MB.' : 'No se ha podido completar el análisis. El proyecto se ha marcado para revisión.';
-    return NextResponse.json({ error: code, message }, { status: code === 'gemini_not_configured' ? 503 : 422 });
+    const providerMissing = ['gemini_not_configured', 'openai_not_configured', 'ai_provider_not_configured', 'ai_provider_pdf_not_configured'].includes(code);
+    const message = providerMissing ? 'El análisis técnico aún no está configurado por un proveedor de IA. Contacta con tu administrador.' : code === 'technical_file_invalid' || code === 'technical_file_type_not_supported' ? 'El archivo debe ser PDF, JPG, PNG o WebP y no superar 20 MB.' : 'No se ha podido completar el análisis. El proyecto se ha marcado para revisión.';
+    return NextResponse.json({ error: code, message }, { status: providerMissing ? 503 : 422 });
   }
 }
