@@ -9,6 +9,7 @@ import {
   Mail,
   Megaphone,
   MessageCircle,
+  Ruler,
   ShieldCheck,
   Star,
   TrendingUp,
@@ -68,6 +69,12 @@ const employeePresentation = {
       'Nunca vuelvas a perder una venta. Sigue oportunidades, prepara contactos y agenda reuniones.',
     icon: TrendingUp,
     benefits: ['Seguimiento constante', 'Centro de Ventas incluido', '3 días para probarlo'],
+  },
+  employee_technical_architect: {
+    name: 'Arquitecto Técnico IA',
+    description: 'Analiza planos PDF e imágenes, genera una memoria técnica y prepara mediciones preliminares para revisar.',
+    icon: Ruler,
+    benefits: ['Archivos privados por empresa', 'Evidencias y límites visibles', 'Borrador para Presupuestos IA', '3 días para probarlo'],
   },
   employee_whatsapp: {
     name: 'WhatsApp IA',
