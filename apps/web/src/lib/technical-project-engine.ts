@@ -167,7 +167,10 @@ export async function createTechnicalQuoteDraft(input: { companyId: string; cust
   if (versionError || !version) throw versionError ?? new Error('technical_quote_version_failed');
   const { error: linesError } = await admin.from('quote_lines').insert(lines.map((line, sortOrder) => ({ quote_version_id: version.id, company_id: input.companyId, chapter: line.chapter, concept: line.concept, unit: line.unit, quantity: line.quantity, unit_cost_cents: line.unitCostCents, planned_days: 0, sort_order: sortOrder, metadata: { source: 'technical_project', project_id: input.projectId } })));
   if (linesError) throw linesError;
-  await publishEvent({ companyId: input.companyId, customerId: input.customerId, employeeId: budgetEmployee.id, name: 'TechnicalQuoteDrafted', source: 'technical_project', idempotencyKey: `technical:quote:${quote.id}`, payload: { quote_id: quote.id, project_id: input.projectId, pending_prices: true } });
+  await Promise.all([
+    publishEvent({ companyId: input.companyId, customerId: input.customerId, employeeId: budgetEmployee.id, name: 'TechnicalQuoteDrafted', source: 'technical_project', idempotencyKey: `technical:quote:${quote.id}`, payload: { quote_id: quote.id, project_id: input.projectId, pending_prices: true } }),
+    publishEvent({ companyId: input.companyId, customerId: input.customerId, employeeId: budgetEmployee.id, name: 'BudgetDraftCreated', source: 'technical_project', idempotencyKey: `technical:quote-draft:${quote.id}`, payload: { quote_id: quote.id, project_id: input.projectId, pending_prices: true } }),
+  ]);
   return quote.id as string;
 }
 
@@ -177,6 +180,7 @@ export async function createAndAnalyzeTechnicalProject(input: { companyId: strin
   const customer = await getCustomer({ companyId: input.companyId, name: input.customer.name, email: input.customer.email, phone: input.customer.phone, source: 'technical_architect' });
   const { data: project, error: projectError } = await admin.from('technical_projects').insert({ company_id: input.companyId, customer_id: customer.id, employee_id: input.employeeId, title: input.title, status: 'processing', created_by: input.userId }).select('id').single();
   if (projectError || !project) throw projectError ?? new Error('technical_project_create_failed');
+  await publishEvent({ companyId: input.companyId, customerId: customer.id, employeeId: input.employeeId, name: 'ProjectCreated', source: 'technical_architect', idempotencyKey: `technical:project:${project.id}`, payload: { project_id: project.id, title: input.title } });
   const { data: version, error: versionError } = await admin.from('technical_project_versions').insert({ project_id: project.id, company_id: input.companyId, version: 1, created_by: input.userId }).select('id').single();
   if (versionError || !version) throw versionError ?? new Error('technical_project_version_create_failed');
   const bytes = await input.file.arrayBuffer();
@@ -189,6 +193,10 @@ export async function createAndAnalyzeTechnicalProject(input: { companyId: strin
   const { error: fileError } = await admin.from('technical_project_files').insert({ project_version_id: version.id, company_id: input.companyId, storage_path: storagePath, original_name: input.file.name, mime_type: input.file.type, byte_size: input.file.size, sha256: hash });
   if (fileError) throw fileError;
   const idempotencyKey = `technical:analysis:${version.id}:${hash}`;
+  await Promise.all([
+    publishEvent({ companyId: input.companyId, customerId: customer.id, employeeId: input.employeeId, name: 'ProjectFileUploaded', source: 'technical_architect', idempotencyKey: `technical:file:${version.id}:${hash}`, payload: { project_id: project.id, project_version_id: version.id, file_name: input.file.name, sha256: hash } }),
+    publishEvent({ companyId: input.companyId, customerId: customer.id, employeeId: input.employeeId, name: 'ProjectAnalysisStarted', source: 'technical_architect', idempotencyKey: `technical:start:${version.id}:${hash}`, payload: { project_id: project.id, project_version_id: version.id } }),
+  ]);
   const { data: analysisRow, error: analysisError } = await admin.from('technical_project_analyses').insert({ project_version_id: version.id, company_id: input.companyId, provider: process.env.AI_PROVIDER || (process.env.OPENAI_API_KEY ? 'openai' : 'gemini'), model: process.env.OPENAI_MODEL || process.env.GEMINI_MODEL || 'unconfigured', status: 'processing', idempotency_key: idempotencyKey, started_at: new Date().toISOString() }).select('id').single();
   if (analysisError || !analysisRow) throw analysisError ?? new Error('technical_analysis_create_failed');
   try {
@@ -200,7 +208,13 @@ export async function createAndAnalyzeTechnicalProject(input: { companyId: strin
       admin.from('technical_projects').update({ status: 'ready', updated_at: now }).eq('id', project.id),
       saveMemory({ companyId: input.companyId, customerId: customer.id, employeeId: input.employeeId, type: 'summary', content: `Análisis técnico preliminar preparado: ${input.title}. ${analyzed.result.summary}`, metadata: { project_id: project.id, project_version_id: version.id } }),
       publishEvent({ companyId: input.companyId, customerId: customer.id, employeeId: input.employeeId, name: 'TechnicalProjectAnalyzed', source: 'technical_architect', idempotencyKey, payload: { project_id: project.id, project_version_id: version.id, confidence: analyzed.result.confidence, quote_id: quoteId } }),
+      publishEvent({ companyId: input.companyId, customerId: customer.id, employeeId: input.employeeId, name: 'ProjectAnalysisCompleted', source: 'technical_architect', idempotencyKey: `${idempotencyKey}:completed`, payload: { project_id: project.id, project_version_id: version.id, confidence: analyzed.result.confidence, quote_id: quoteId } }),
       recordBusinessEvent({ eventName: 'technical_project_analyzed', companyId: input.companyId, idempotencyKey, metadata: { project_id: project.id, quote_id: quoteId } }),
+      ...analyzed.result.measurements.flatMap((measurement, index) => [
+        publishEvent({ companyId: input.companyId, customerId: customer.id, employeeId: input.employeeId, name: 'MeasurementDetected', source: 'technical_architect', idempotencyKey: `${idempotencyKey}:measurement:${index}`, payload: { project_id: project.id, status: measurement.status, label: measurement.label, confidence: measurement.confidence } }),
+        ...(measurement.status === 'confirmed' ? [publishEvent({ companyId: input.companyId, customerId: customer.id, employeeId: input.employeeId, name: 'MeasurementConfirmed', source: 'technical_architect', idempotencyKey: `${idempotencyKey}:measurement-confirmed:${index}`, payload: { project_id: project.id, label: measurement.label } })] : []),
+        ...(measurement.status === 'estimated' ? [publishEvent({ companyId: input.companyId, customerId: customer.id, employeeId: input.employeeId, name: 'MeasurementEstimated', source: 'technical_architect', idempotencyKey: `${idempotencyKey}:measurement-estimated:${index}`, payload: { project_id: project.id, label: measurement.label } })] : []),
+      ]),
     ]);
     return { projectId: project.id as string, quoteId, analysis: analyzed.result };
   } catch (error) {
