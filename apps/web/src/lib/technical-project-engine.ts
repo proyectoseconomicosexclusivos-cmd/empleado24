@@ -5,8 +5,10 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getCustomer, publishEvent, saveMemory } from '@/lib/empleado24-brain';
 import { recordBusinessEvent } from '@/lib/business-events';
 
-type TechnicalMeasure = { label: string; value: number | null; unit: string; evidence: string; confidence: number };
-type TechnicalLine = { chapter: string; concept: string; unit: string; quantity: number; evidence: string };
+type EvidenceStatus = 'confirmed' | 'estimated' | 'unavailable';
+type TechnicalEvidence = { file: string; page: number | null; element: string; evidence: string; confidence: number };
+type TechnicalMeasure = TechnicalEvidence & { label: string; value: number | null; unit: string; status: EvidenceStatus };
+type TechnicalLine = TechnicalEvidence & { chapter: string; concept: string; unit: string; quantity: number; status: EvidenceStatus };
 export type TechnicalAnalysis = {
   summary: string;
   technicalMemory: string;
@@ -20,6 +22,8 @@ export type TechnicalAnalysis = {
 };
 
 const allowedTypes = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']);
+type AIProviderName = 'openai' | 'gemini';
+type ProviderAnalysisInput = { bytes: ArrayBuffer; mimeType: string; originalName: string; prompt: string };
 
 function boundedText(value: unknown, maximum: number) {
   return typeof value === 'string' ? value.trim().slice(0, maximum) : '';
@@ -31,6 +35,21 @@ function boundedNumber(value: unknown, minimum: number, maximum: number) {
 }
 
 function array(value: unknown) { return Array.isArray(value) ? value : []; }
+
+function evidenceStatus(value: unknown): EvidenceStatus {
+  return value === 'confirmed' || value === 'estimated' || value === 'unavailable' ? value : 'unavailable';
+}
+
+function sourceEvidence(row: Record<string, unknown>) {
+  const page = typeof row.page === 'number' && Number.isInteger(row.page) && row.page > 0 ? row.page : null;
+  return {
+    file: boundedText(row.file, 240) || 'Archivo subido',
+    page,
+    element: boundedText(row.element, 240) || 'Elemento no identificable',
+    evidence: boundedText(row.evidence, 500),
+    confidence: boundedNumber(row.confidence, 0, 1),
+  };
+}
 
 function cleanAnalysis(value: unknown): TechnicalAnalysis {
   const input = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -45,16 +64,19 @@ function cleanAnalysis(value: unknown): TechnicalAnalysis {
     measurements: array(input.measurements).map((item) => {
       const row = item && typeof item === 'object' ? item as Record<string, unknown> : {};
       const numeric = typeof row.value === 'number' && Number.isFinite(row.value) ? row.value : null;
-      return { label: boundedText(row.label, 160), value: numeric, unit: boundedText(row.unit, 24), evidence: boundedText(row.evidence, 500), confidence: boundedNumber(row.confidence, 0, 1) };
-    }).filter((item) => item.label && item.unit && item.evidence).slice(0, 120),
+      const status = evidenceStatus(row.status);
+      const source = sourceEvidence(row);
+      return { label: boundedText(row.label, 160), value: numeric, unit: boundedText(row.unit, 24), status, ...source };
+    }).filter((item) => item.label && item.unit && item.evidence && (item.status === 'unavailable' || item.value !== null)).slice(0, 120),
     visibleMaterials: array(input.visibleMaterials).map((item) => {
       const row = item && typeof item === 'object' ? item as Record<string, unknown> : {};
       return { name: boundedText(row.name, 160), evidence: boundedText(row.evidence, 500), confidence: boundedNumber(row.confidence, 0, 1) };
     }).filter((item) => item.name && item.evidence).slice(0, 80),
     suggestedQuoteLines: array(input.suggestedQuoteLines).map((item) => {
       const row = item && typeof item === 'object' ? item as Record<string, unknown> : {};
-      return { chapter: boundedText(row.chapter, 120) || 'Mediciones preliminares', concept: boundedText(row.concept, 180), unit: boundedText(row.unit, 30) || 'unidad', quantity: boundedNumber(row.quantity, 0.001, 1000000), evidence: boundedText(row.evidence, 500) };
-    }).filter((item) => item.concept && item.evidence).slice(0, 80),
+      const source = sourceEvidence(row);
+      return { chapter: boundedText(row.chapter, 120) || 'Mediciones preliminares', concept: boundedText(row.concept, 180), unit: boundedText(row.unit, 30) || 'unidad', quantity: boundedNumber(row.quantity, 0.001, 1000000), status: evidenceStatus(row.status), ...source };
+    }).filter((item) => item.concept && item.evidence && item.status !== 'unavailable').slice(0, 80),
     limitations: array(input.limitations).map((item) => boundedText(item, 400)).filter(Boolean).slice(0, 30),
     confidence: boundedNumber(input.confidence, 0, 1),
   };
@@ -65,18 +87,20 @@ function jsonFromModel(text: string) {
   return cleanAnalysis(JSON.parse(trimmed));
 }
 
-export async function analyzeTechnicalFile(input: { bytes: ArrayBuffer; mimeType: string; originalName: string }) {
-  if (!allowedTypes.has(input.mimeType)) throw new Error('technical_file_type_not_supported');
+function technicalPrompt(fileName: string) {
+  return `Eres Arquitecto Técnico IA de apoyo. Analiza este plano PDF o imagen sin inventar información. Devuelve SOLO JSON válido con: summary, technicalMemory, visibleText, spaces, measurements, visibleMaterials, suggestedQuoteLines, limitations, confidence. En cada measurements y suggestedQuoteLines incluye SIEMPRE file, page (número de página 1-indexado o null si la fuente es una imagen de una página), element, evidence, confidence y status. status solo puede ser confirmed (medida visible de forma explícita), estimated (inferida únicamente desde una escala o referencia visible, explicando el cálculo en evidence) o unavailable (no se puede determinar). Nunca asignes valor ni generes una partida con status unavailable. La trazabilidad debe ser archivo → página → elemento → medida/partida → evidencia → confianza. Cada espacio, medida, material y partida debe incluir evidence con el texto, cota o elemento visual que lo sustenta. Solo extrae medidas que aparezcan explícitamente o que puedan justificarse con una escala visible; si no, indícalo como limitación. No certificas medidas, no sustituyes a un arquitecto/arquitecto técnico y no preparas documentos para firma. Las partidas son mediciones preliminares sin precios. Archivo: ${fileName}.`;
+}
+
+async function analyzeWithGemini(input: ProviderAnalysisInput) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('gemini_not_configured');
   const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
   const file = Buffer.from(input.bytes).toString('base64');
-  const prompt = `Eres Arquitecto Técnico IA de apoyo. Analiza este plano PDF o imagen sin inventar información. Devuelve SOLO JSON válido con: summary, technicalMemory, visibleText, spaces, measurements, visibleMaterials, suggestedQuoteLines, limitations, confidence. Cada espacio, medida, material y partida debe incluir evidence con el texto, cota o elemento visual que lo sustenta. Solo extrae medidas que aparezcan explícitamente o que puedan justificarse con una escala visible; si no, indícalo como limitación. No certificas medidas, no sustituyes a un arquitecto/arquitecto técnico y no preparas documentos para firma. Las partidas son mediciones preliminares sin precios. Archivo: ${input.originalName}.`;
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }, { inlineData: { mimeType: input.mimeType, data: file } }] }],
+      contents: [{ parts: [{ text: input.prompt }, { inlineData: { mimeType: input.mimeType, data: file } }] }],
       generationConfig: { responseMimeType: 'application/json', temperature: 0.1 },
     }),
     cache: 'no-store',
@@ -85,7 +109,43 @@ export async function analyzeTechnicalFile(input: { bytes: ArrayBuffer; mimeType
   if (!response.ok) throw new Error(`gemini_http_${response.status}`);
   const text = payload?.candidates?.[0]?.content?.parts?.map((part: { text?: unknown }) => typeof part.text === 'string' ? part.text : '').join('') ?? '';
   if (!text) throw new Error('gemini_empty_response');
-  return { model, result: jsonFromModel(text) };
+  return { provider: 'gemini' as const, model, result: jsonFromModel(text) };
+}
+
+async function analyzeWithOpenAI(input: ProviderAnalysisInput) {
+  if (input.mimeType === 'application/pdf') throw new Error('openai_pdf_not_configured');
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error('openai_not_configured');
+  const model = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
+  const image = `data:${input.mimeType};base64,${Buffer.from(input.bytes).toString('base64')}`;
+  const response = await fetch(`${process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1'}/chat/completions`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model,
+      response_format: { type: 'json_object' },
+      temperature: 0.1,
+      messages: [{ role: 'user', content: [{ type: 'text', text: input.prompt }, { type: 'image_url', image_url: { url: image, detail: 'high' } }] }],
+    }),
+    cache: 'no-store',
+  });
+  const payload = await response.json().catch(() => null) as any;
+  if (!response.ok) throw new Error(`openai_http_${response.status}`);
+  const text = payload?.choices?.[0]?.message?.content;
+  if (typeof text !== 'string' || !text.trim()) throw new Error('openai_empty_response');
+  return { provider: 'openai' as const, model, result: jsonFromModel(text) };
+}
+
+/** Provider boundary: keys stay server-only and no component calls a model directly. */
+export async function analyzeTechnicalFile(input: Omit<ProviderAnalysisInput, 'prompt'>) {
+  if (!allowedTypes.has(input.mimeType)) throw new Error('technical_file_type_not_supported');
+  const request = { ...input, prompt: technicalPrompt(input.originalName) };
+  const preference = process.env.AI_PROVIDER?.toLowerCase();
+  const canUseOpenAI = Boolean(process.env.OPENAI_API_KEY) && input.mimeType !== 'application/pdf';
+  if ((preference === 'openai' || (!preference && canUseOpenAI)) && canUseOpenAI) return analyzeWithOpenAI(request);
+  if (process.env.GEMINI_API_KEY) return analyzeWithGemini(request);
+  if (input.mimeType === 'application/pdf') throw new Error('ai_provider_pdf_not_configured');
+  throw new Error('ai_provider_not_configured');
 }
 
 export async function createTechnicalQuoteDraft(input: { companyId: string; customerId: string; architectEmployeeId: string; projectId: string; versionId: string; title: string; analysis: TechnicalAnalysis; userId: string }) {
@@ -129,14 +189,14 @@ export async function createAndAnalyzeTechnicalProject(input: { companyId: strin
   const { error: fileError } = await admin.from('technical_project_files').insert({ project_version_id: version.id, company_id: input.companyId, storage_path: storagePath, original_name: input.file.name, mime_type: input.file.type, byte_size: input.file.size, sha256: hash });
   if (fileError) throw fileError;
   const idempotencyKey = `technical:analysis:${version.id}:${hash}`;
-  const { data: analysisRow, error: analysisError } = await admin.from('technical_project_analyses').insert({ project_version_id: version.id, company_id: input.companyId, model: process.env.GEMINI_MODEL || 'gemini-3.5-flash', status: 'processing', idempotency_key: idempotencyKey, started_at: new Date().toISOString() }).select('id').single();
+  const { data: analysisRow, error: analysisError } = await admin.from('technical_project_analyses').insert({ project_version_id: version.id, company_id: input.companyId, provider: process.env.AI_PROVIDER || (process.env.OPENAI_API_KEY ? 'openai' : 'gemini'), model: process.env.OPENAI_MODEL || process.env.GEMINI_MODEL || 'unconfigured', status: 'processing', idempotency_key: idempotencyKey, started_at: new Date().toISOString() }).select('id').single();
   if (analysisError || !analysisRow) throw analysisError ?? new Error('technical_analysis_create_failed');
   try {
     const analyzed = await analyzeTechnicalFile({ bytes, mimeType: input.file.type, originalName: input.file.name });
     const quoteId = await createTechnicalQuoteDraft({ companyId: input.companyId, customerId: customer.id, architectEmployeeId: input.employeeId, projectId: project.id, versionId: version.id, title: input.title, analysis: analyzed.result, userId: input.userId });
     const now = new Date().toISOString();
     await Promise.all([
-      admin.from('technical_project_analyses').update({ status: 'completed', model: analyzed.model, result: analyzed.result, confidence: analyzed.result.confidence, completed_at: now, updated_at: now }).eq('id', analysisRow.id),
+      admin.from('technical_project_analyses').update({ status: 'completed', provider: analyzed.provider, model: analyzed.model, result: analyzed.result, confidence: analyzed.result.confidence, completed_at: now, updated_at: now }).eq('id', analysisRow.id),
       admin.from('technical_projects').update({ status: 'ready', updated_at: now }).eq('id', project.id),
       saveMemory({ companyId: input.companyId, customerId: customer.id, employeeId: input.employeeId, type: 'summary', content: `Análisis técnico preliminar preparado: ${input.title}. ${analyzed.result.summary}`, metadata: { project_id: project.id, project_version_id: version.id } }),
       publishEvent({ companyId: input.companyId, customerId: customer.id, employeeId: input.employeeId, name: 'TechnicalProjectAnalyzed', source: 'technical_architect', idempotencyKey, payload: { project_id: project.id, project_version_id: version.id, confidence: analyzed.result.confidence, quote_id: quoteId } }),
