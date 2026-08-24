@@ -9,7 +9,8 @@ export type BrainEventName =
   | 'MeetingBooked' | 'MeetingCompleted' | 'SaleWon' | 'SaleLost'
   | 'CustomerCreated' | 'EmployeeActivated' | 'EmployeePaused'
   | 'SubscriptionStarted' | 'SubscriptionCancelled' | 'PaymentCompleted'
-  | 'MinutesPurchased' | 'SupportOpened' | 'SupportClosed';
+  | 'MinutesPurchased' | 'SupportOpened' | 'SupportClosed'
+  | 'TechnicalProjectAnalyzed' | 'TechnicalQuoteDrafted';
 
 type CustomerInput = {
   companyId: string;
