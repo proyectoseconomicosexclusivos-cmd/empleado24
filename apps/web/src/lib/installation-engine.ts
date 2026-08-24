@@ -6,13 +6,14 @@ export type InstallationStatus = { progress: number; completedSteps: Installatio
 
 export async function getInstallationStatus(companyId: string): Promise<InstallationStatus> {
   const supabase = await createClient() as any;
-  const [companyResult, employeesResult, integrationsResult, callsResult, whatsappResult, quotesResult] = await Promise.all([
+  const [companyResult, employeesResult, integrationsResult, callsResult, whatsappResult, quotesResult, technicalProjectsResult] = await Promise.all([
     supabase.from('companies').select('id').eq('id', companyId).maybeSingle(),
     supabase.from('employees').select('employee_type,status,runtime_status').eq('company_id', companyId),
     supabase.from('company_integrations').select('provider_key,status,enabled').eq('company_id', companyId),
     supabase.from('calls').select('id').eq('company_id', companyId).limit(1),
     supabase.from('whatsapp_messages').select('id').eq('company_id', companyId).limit(1),
     supabase.from('quotes').select('id').eq('company_id', companyId).limit(1),
+    supabase.from('technical_projects').select('id').eq('company_id', companyId).eq('status', 'ready').limit(1),
   ]);
   const employees = employeesResult.data ?? [];
   const integrations = integrationsResult.data ?? [];
@@ -29,6 +30,7 @@ export async function getInstallationStatus(companyId: string): Promise<Installa
     { id: 'call', label: 'Primera llamada realizada', complete: Boolean(callsResult.data?.length), href: '/app/primera-llamada', detail: 'Comprueba la atención de Laura.' },
     { id: 'whatsapp-proof', label: 'Primer WhatsApp real', complete: Boolean(whatsappResult.data?.length), href: '/app/whatsapp', detail: 'Valida la atención por WhatsApp.' },
     { id: 'quote', label: 'Primer presupuesto generado', complete: Boolean(quotesResult.data?.length), href: '/app/presupuestos', detail: has('budget_specialist') ? 'Crea una propuesta para un cliente.' : 'Se activará al contratar Presupuestos IA.' },
+    ...(has('technical_architect') ? [{ id: 'technical-project', label: 'Primer proyecto técnico analizado', complete: Boolean(technicalProjectsResult.data?.length), href: '/app/arquitecto-tecnico', detail: 'Sube un PDF o imagen para preparar una memoria técnica preliminar.' }] : []),
   ];
   const completedSteps = steps.filter((step) => step.complete);
   const pendingSteps = steps.filter((step) => !step.complete);
