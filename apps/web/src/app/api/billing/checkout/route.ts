@@ -24,9 +24,21 @@ export async function POST(request: Request) {
     const requestOrigin = new URL(request.url).origin.replace(/\/$/, '');
     const baseUrl = /^https:\/\//.test(requestOrigin) && !/localhost|127\.0\.0\.1/.test(requestOrigin) ? requestOrigin : publicAppUrl(request);
     if (!baseUrl) return NextResponse.json({ error: 'public_url_required' }, { status: 503 });
-    const checkout = await stripeAdapter().createCheckout({ companyId: context.company.id, customerId: customer.customerId, plan: billingPlan(plan), successUrl: `${baseUrl}/app/facturacion?checkout=success`, cancelUrl: `${baseUrl}/app/facturacion?checkout=canceled`, attemptId });
+    const { data: lead } = await (context.admin as any)
+      .from('sales_assistant_leads')
+      .select('id,lead_token,anonymous_id,utm_campaign,utm_content,fbclid,gclid,meta_campaign_id,meta_adset_id,meta_ad_id,meta_form_id')
+      .eq('registered_company_id', context.company.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const attribution = Object.fromEntries(Object.entries({
+      lead_id: lead?.id, lead_token: lead?.lead_token, conversation_id: lead?.anonymous_id,
+      utm_campaign: lead?.utm_campaign, utm_content: lead?.utm_content, fbclid: lead?.fbclid, gclid: lead?.gclid,
+      meta_campaign_id: lead?.meta_campaign_id, meta_adset_id: lead?.meta_adset_id, meta_ad_id: lead?.meta_ad_id, meta_form_id: lead?.meta_form_id,
+    }).filter(([, value]) => typeof value === 'string' && value.length > 0)) as Record<string, string>;
+    const checkout = await stripeAdapter().createCheckout({ companyId: context.company.id, customerId: customer.customerId, plan: billingPlan(plan), successUrl: `${baseUrl}/app/facturacion?checkout=success`, cancelUrl: `${baseUrl}/app/facturacion?checkout=canceled`, attemptId, attribution });
     if ('error' in checkout) return NextResponse.json({ error: checkout.error.code, message: checkout.error.message }, { status: 502 });
-    await recordBusinessEvent({ eventName: 'checkout_started', userId: context.user.id, companyId: context.company.id, metadata: { plan_key: planKey } }).catch(() => undefined);
+    await recordBusinessEvent({ eventName: 'checkout_started', userId: context.user.id, companyId: context.company.id, metadata: { plan_key: planKey, ...attribution }, idempotencyKey: `checkout-started:${context.company.id}:${attemptId}` }).catch(() => undefined);
     return NextResponse.json(checkout.data);
   } catch (error) {
     return NextResponse.json({ error: 'checkout_failed', message: error instanceof Error ? error.message : 'Checkout unavailable.' }, { status: 502 });
