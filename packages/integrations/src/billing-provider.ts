@@ -33,7 +33,7 @@ export function calculatePrepaidPriceMinor(costPerMinuteMicros: number, minutes:
 
 export interface BillingProvider {
   createCustomer(input: { companyId: string; email: string; name: string }): Promise<BillingResult<{ customerId: string }>>;
-  createCheckout(input: { companyId: string; customerId: string; plan: BillingPlan; successUrl: string; cancelUrl: string; attemptId: string }): Promise<BillingResult<{ url: string }>>;
+  createCheckout(input: { companyId: string; customerId: string; plan: BillingPlan; successUrl: string; cancelUrl: string; attemptId: string; attribution?: Record<string, string> }): Promise<BillingResult<{ url: string }>>;
   createPrepaidCheckout(input: { companyId: string; customerId: string; pack: PrepaidMinutePack; successUrl: string; cancelUrl: string; attemptId: string }): Promise<BillingResult<{ url: string }>>;
   createPortal(input: { customerId: string; returnUrl: string; plans: BillingPlan[] }): Promise<BillingResult<{ url: string }>>;
   parseWebhook(input: { payload: string; signature?: string }): Promise<BillingResult<StripeEvent>>;
@@ -176,7 +176,7 @@ export class StripeBillingAdapter implements BillingProvider {
     return 'error' in price ? price : { data: { priceId: price.data.id, productId } };
   }
 
-  async createCheckout(input: { companyId: string; customerId: string; plan: BillingPlan; successUrl: string; cancelUrl: string; attemptId: string }) {
+  async createCheckout(input: { companyId: string; customerId: string; plan: BillingPlan; successUrl: string; cancelUrl: string; attemptId: string; attribution?: Record<string, string> }) {
     const price = await this.ensurePrice(input.plan);
     if ('error' in price) return price;
     const trialDays = Number.isInteger(input.plan.trialDays) && input.plan.trialDays > 0 ? input.plan.trialDays : 0;
@@ -190,6 +190,9 @@ export class StripeBillingAdapter implements BillingProvider {
         payment_method_collection: 'always',
         'metadata[company_id]': input.companyId, 'metadata[plan_key]': input.plan.key,
         'subscription_data[metadata][company_id]': input.companyId, 'subscription_data[metadata][plan_key]': input.plan.key,
+        ...Object.fromEntries(Object.entries(input.attribution ?? {}).flatMap(([key, value]) => [
+          [`metadata[${key}]`, value], [`subscription_data[metadata][${key}]`, value],
+        ])),
         'subscription_data[trial_period_days]': trialDays || undefined,
       },
     });

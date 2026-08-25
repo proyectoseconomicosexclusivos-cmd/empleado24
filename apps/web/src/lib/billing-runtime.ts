@@ -27,7 +27,7 @@ export function billingPlan(plan: PlanRow): BillingPlan {
       ? 'employee_email_monthly'
       : plan.plan_key === 'employee_budget'
         ? 'employee_budget_monthly'
-      : plan.plan_key === 'employee_closer'
+        : plan.plan_key === 'employee_closer'
         ? 'employee_closer_monthly'
         : plan.plan_key === 'employee_whatsapp'
           ? 'employee_whatsapp_monthly'
@@ -322,12 +322,26 @@ export async function processStripeEvent(event: StripeEvent) {
   const resolvedSubscription = await findSubscription(admin, object, companyHint);
   const resolvedCompanyId = companyHint ?? resolvedSubscription?.company_id;
   if (!resolvedCompanyId) throw new Error('stripe_event_tenant_not_found');
+  const checkoutMetadata = metadata(object);
+  const leadId = stringValue(checkoutMetadata.lead_id);
+  const attribution = Object.fromEntries(['lead_id', 'lead_token', 'conversation_id', 'utm_campaign', 'utm_content', 'fbclid', 'gclid', 'meta_campaign_id', 'meta_adset_id', 'meta_ad_id', 'meta_form_id']
+    .flatMap((key) => typeof checkoutMetadata[key] === 'string' ? [[key, checkoutMetadata[key]]] : []));
   if (event.type === 'checkout.session.completed') {
     await recordBusinessEvent({
       eventName: 'checkout_completed',
       companyId: resolvedCompanyId,
-      metadata: { session_id: stringValue(object.id), purchase_type: stringValue(metadata(object).purchase_type) ?? 'subscription' },
+      metadata: { session_id: stringValue(object.id), purchase_type: stringValue(metadata(object).purchase_type) ?? 'subscription', ...attribution },
     }).catch(() => undefined);
+    if (leadId) await (admin as any).from('sales_assistant_leads').update({ checkout_session_id: stringValue(object.id), updated_at: new Date().toISOString() }).eq('id', leadId).eq('registered_company_id', resolvedCompanyId);
+  }
+  if (event.type === 'checkout.session.expired') {
+    await recordBusinessEvent({
+      eventName: 'checkout_abandoned', companyId: resolvedCompanyId, source: 'stripe.webhook',
+      idempotencyKey: `stripe:${event.id}:checkout_abandoned`,
+      metadata: { session_id: stringValue(object.id), ...attribution },
+    }).catch(() => undefined);
+    if (leadId) await (admin as any).from('sales_assistant_leads').update({ checkout_session_id: stringValue(object.id), commercial_state: 'VERY_INTERESTED', updated_at: new Date().toISOString() }).eq('id', leadId).eq('registered_company_id', resolvedCompanyId);
+    await publishEvent({ companyId: resolvedCompanyId, name: 'CheckoutAbandoned', source: 'stripe', idempotencyKey: `brain:stripe:abandoned:${event.id}`, payload: { stripe_event_id: event.id, checkout_session_id: stringValue(object.id), ...attribution } });
   }
   const auditPayload = { processed: false, event_type: event.type, object_id: stringValue(object.id), received_at: new Date().toISOString() } as Json;
   const inserted = await admin.from('subscription_events').insert({ company_id: resolvedCompanyId, subscription_id: resolvedSubscription?.id ?? null, event_type: event.type, provider_key: 'stripe', provider_event_id: event.id, payload: auditPayload }).select('id,payload').maybeSingle();
@@ -395,7 +409,7 @@ export async function processStripeEvent(event: StripeEvent) {
       companyId: resolvedCompanyId,
       source: 'stripe.webhook',
       idempotencyKey: `stripe:${event.id}:${commercialEvent}`,
-      metadata: { provider_event_id: event.id, provider_object_id: stringValue(object.id), purchase_type: purchaseType },
+      metadata: { provider_event_id: event.id, provider_object_id: stringValue(object.id), purchase_type: purchaseType, ...attribution },
     }).catch(() => undefined);
   }
   const brainEvent = brainEventForStripeEvent(event, purchaseType);

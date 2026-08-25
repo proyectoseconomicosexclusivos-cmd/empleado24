@@ -102,10 +102,13 @@ export async function completeOnboarding(formData: FormData) {
       content: `Laura detectó interés por ${lead.primary_problem ?? 'mejorar la atención comercial'}.`,
       metadata: { lead_id: lead.id, sector: lead.sector, recommendation: lead.recommended_employees, roi: lead.roi_snapshot },
     });
-    await publishEvent({
-      companyId, customerId: customer.id, name: 'LeadCreated', source: 'laura_sales_assistant',
-      idempotencyKey: `brain:laura:lead:${lead.id}`, payload: { lead_id: lead.id, attribution: 'laura' },
-    });
+    await Promise.all([
+      publishEvent({ companyId, customerId: customer.id, name: 'LeadCreated', source: 'laura_sales_assistant', idempotencyKey: `brain:laura:lead:${lead.id}`, payload: { lead_id: lead.id, attribution: 'laura' } }),
+      publishEvent({ companyId, customerId: customer.id, name: 'LeadReceived', source: 'laura_sales_assistant', idempotencyKey: `brain:laura:received:${lead.id}`, payload: { lead_id: lead.id, source: 'laura' } }),
+      ...(lead.primary_problem ? [publishEvent({ companyId, customerId: customer.id, name: 'NeedDetected', source: 'laura_sales_assistant', idempotencyKey: `brain:laura:need:${lead.id}`, payload: { lead_id: lead.id, problem: lead.primary_problem } })] : []),
+      ...(lead.recommended_employees?.length ? [publishEvent({ companyId, customerId: customer.id, name: 'EmployeeRecommended', source: 'laura_sales_assistant', idempotencyKey: `brain:laura:recommendation:${lead.id}`, payload: { lead_id: lead.id, employees: lead.recommended_employees } })] : []),
+      publishEvent({ companyId, customerId: customer.id, name: 'OfferPresented', source: 'laura_sales_assistant', idempotencyKey: `brain:laura:offer:${lead.id}`, payload: { lead_id: lead.id, roi: lead.roi_snapshot } }),
+    ]);
   })().catch(() => undefined);
   void notifyOwner({
     subject: 'Empleado24 · empresa creada',
