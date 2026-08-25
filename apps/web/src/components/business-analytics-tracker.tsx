@@ -30,6 +30,16 @@ type AnalyticsIdentity = {
   landing: string;
 };
 
+type Attribution = {
+  utmSource: string | null;
+  utmMedium: string | null;
+  utmCampaign: string | null;
+  utmContent: string | null;
+  utmTerm: string | null;
+  fbclid: string | null;
+  gclid: string | null;
+};
+
 function readCookie(name: string) {
   return (
     document.cookie
@@ -52,6 +62,25 @@ function analyticsIdentity(): AnalyticsIdentity {
   writeCookie('e24_session', sessionId, 60 * 30);
   writeCookie('e24_landing', landing, 60 * 60 * 24 * 30);
   return { anonymousId, sessionId, landing };
+}
+
+function readAttribution(): Attribution {
+  try {
+    const saved = readCookie('e24_attribution');
+    if (saved) {
+      const value = JSON.parse(decodeURIComponent(saved)) as Attribution;
+      if (value && typeof value === 'object') return value;
+    }
+  } catch {
+    // Bad client storage must never break a commercial visit.
+  }
+  const query = new URLSearchParams(window.location.search);
+  const current: Attribution = {
+    utmSource: query.get('utm_source'), utmMedium: query.get('utm_medium'), utmCampaign: query.get('utm_campaign'),
+    utmContent: query.get('utm_content'), utmTerm: query.get('utm_term'), fbclid: query.get('fbclid'), gclid: query.get('gclid'),
+  };
+  writeCookie('e24_attribution', JSON.stringify(current), 60 * 60 * 24 * 30);
+  return current;
 }
 
 function trackMeta(event: 'PageView' | 'ViewContent') {
@@ -86,7 +115,7 @@ function sendEvent(input: {
 }) {
   try {
     const identity = analyticsIdentity();
-    const query = new URLSearchParams(window.location.search);
+    const attribution = readAttribution();
     const body = JSON.stringify({
       eventName: input.eventName,
       path: window.location.pathname,
@@ -98,13 +127,7 @@ function sendEvent(input: {
       source: input.metadata?.action ? 'cro' : 'web',
       landing: identity.landing,
       referrer: document.referrer || null,
-      utmSource: query.get('utm_source'),
-      utmMedium: query.get('utm_medium'),
-      utmCampaign: query.get('utm_campaign'),
-      utmContent: query.get('utm_content'),
-      utmTerm: query.get('utm_term'),
-      fbclid: query.get('fbclid'),
-      gclid: query.get('gclid'),
+      ...attribution,
       metadata: input.metadata,
     });
     const payload = new Blob([body], { type: 'application/json' });
@@ -156,8 +179,8 @@ export function BusinessAnalyticsTracker() {
       idempotencyKey: `${eventName}:${identity.sessionId}:${pathname}`,
       metadata: {
         action: 'page_view',
-        gclid: new URLSearchParams(window.location.search).get('gclid'),
-        ad: new URLSearchParams(window.location.search).get('utm_content'),
+        gclid: readAttribution().gclid,
+        ad: readAttribution().utmContent,
         device: device(),
         browser: browserName(),
         language: navigator.language.slice(0, 20),
