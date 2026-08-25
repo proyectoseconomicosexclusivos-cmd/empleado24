@@ -22,6 +22,7 @@ type SavedConversation = {
 };
 type Roi = { monthlyHours: number; hourlyValue: number; monthlySaving: number; monthlyCost: number; monthlyBenefit: number };
 type Intervention = 'timer' | 'scroll' | 'faq' | 'price' | 'comparison' | 'exit';
+type Attribution = { utmSource: string | null; utmMedium: string | null; utmCampaign: string | null; utmContent: string | null; utmTerm: string | null; fbclid: string | null; gclid: string | null };
 
 function cookie(name: string) {
   return document.cookie.split('; ').find((entry) => entry.startsWith(`${name}=`))?.split('=')[1] ?? null;
@@ -41,16 +42,38 @@ function identity(): Identity {
   return { anonymousId, sessionId, landing };
 }
 
+function attribution(): Attribution {
+  try {
+    const saved = cookie('e24_attribution');
+    if (saved) {
+      const value = JSON.parse(decodeURIComponent(saved)) as Attribution;
+      if (value && typeof value === 'object') return value;
+    }
+  } catch { /* optional client attribution */ }
+  const query = new URLSearchParams(window.location.search);
+  const current = { utmSource: query.get('utm_source'), utmMedium: query.get('utm_medium'), utmCampaign: query.get('utm_campaign'), utmContent: query.get('utm_content'), utmTerm: query.get('utm_term'), fbclid: query.get('fbclid'), gclid: query.get('gclid') };
+  setCookie('e24_attribution', JSON.stringify(current), 60 * 60 * 24 * 30);
+  return current;
+}
+
 function analytics(action: string, label: string, key: string, extra: Record<string, unknown> = {}) {
   const visitor = identity();
-  const query = new URLSearchParams(window.location.search);
+  const source = attribution();
+  const eventName = action === 'laura_personalized_demo_started' || action === 'laura_demo_opened'
+    ? 'demo_started'
+    : action === 'laura_demo_offer' ? 'demo_offered'
+      : action === 'laura_objection' ? 'objection_detected'
+        : action === 'laura_answer' && label.startsWith('problem:') ? 'need_detected'
+          : action === 'laura_answer' && label.startsWith('sector:') ? 'employee_recommended'
+            : action === 'laura_conversation_completed' ? 'offer_presented'
+              : action === 'laura_conversation_started' || action === 'laura_presented' || action === 'laura_demo_started' ? 'conversation_started'
+                : 'page_view';
   const payload = {
-    eventName: 'page_view', path: window.location.pathname, anonymousId: visitor.anonymousId,
+    eventName, path: window.location.pathname, anonymousId: visitor.anonymousId,
     visitorId: visitor.anonymousId, sessionId: visitor.sessionId, eventId: crypto.randomUUID(),
     idempotencyKey: `laura:${key}:${visitor.sessionId}`, source: 'laura_sales_assistant',
     landing: visitor.landing, referrer: document.referrer || null,
-    utmSource: query.get('utm_source'), utmMedium: query.get('utm_medium'), utmCampaign: query.get('utm_campaign'),
-    utmContent: query.get('utm_content'), utmTerm: query.get('utm_term'), fbclid: query.get('fbclid'), gclid: query.get('gclid'),
+    ...source,
     metadata: { action, label, zone: 'laura_sales_assistant', ...extra },
   };
   const body = JSON.stringify(payload);
@@ -264,15 +287,14 @@ export function LauraSalesAssistant() {
 
   async function createLead(form: FormData) {
     setSaving(true); setError('');
-    const visitor = identity(); const query = new URLSearchParams(window.location.search);
+    const visitor = identity(); const source = attribution();
     const idempotencyKey = `lead:${visitor.sessionId}:${problem}`;
     const response = await fetch('/api/sales-assistant/lead', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         name: form.get('name'), email: form.get('email'), companyName: form.get('company'), sector, companySize,
         primaryProblem: problem, recommendation: recommendation.names, anonymousId: visitor.anonymousId, sessionId: visitor.sessionId,
-        landing: visitor.landing, referrer: document.referrer || null, utmSource: query.get('utm_source'), utmMedium: query.get('utm_medium'),
-        utmCampaign: query.get('utm_campaign'), utmContent: query.get('utm_content'), utmTerm: query.get('utm_term'), fbclid: query.get('fbclid'), roiSnapshot: roi, idempotencyKey,
+        landing: visitor.landing, referrer: document.referrer || null, ...source, roiSnapshot: roi, idempotencyKey,
         contactConsent: form.get('contactConsent') === 'on',
       }),
     });
