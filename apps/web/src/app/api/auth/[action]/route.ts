@@ -39,11 +39,19 @@ function analyticsContext(request: Request) {
   } catch {
     path = null;
   }
+  const attribution = value('e24_attribution');
+  let stored: Record<string, unknown> = {};
+  try { stored = attribution ? JSON.parse(attribution) as Record<string, unknown> : {}; } catch { /* cookie is optional */ }
+  const storedText = (key: string) => typeof stored[key] === 'string' ? stored[key] : null;
   return {
     anonymousId: value('e24_anon'),
     sessionId: value('e24_session'),
     path,
-    utm: { referrer: referer, landing: value('e24_landing') },
+    utm: {
+      source: storedText('utmSource'), medium: storedText('utmMedium'), campaign: storedText('utmCampaign'),
+      content: storedText('utmContent'), term: storedText('utmTerm'), fbclid: storedText('fbclid'),
+      referrer: referer, landing: value('e24_landing'),
+    },
   };
 }
 
