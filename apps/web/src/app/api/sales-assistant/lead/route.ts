@@ -34,6 +34,7 @@ export async function POST(request: Request) {
     ? body.roiSnapshot as Record<string, unknown>
     : {};
   const contactConsent = body?.contactConsent === true;
+  const gclid = text(body?.gclid, 300) || null;
 
   if (name.length < 2 || !targetEmail || companyName.length < 2 || !idempotencyKey)
     return NextResponse.json({ error: 'invalid_lead' }, { status: 400 });
@@ -71,10 +72,15 @@ export async function POST(request: Request) {
     utm_content: text(body?.utmContent, 200) || null,
     utm_term: text(body?.utmTerm, 200) || null,
     fbclid: text(body?.fbclid, 300) || null,
+    gclid,
+    lead_source: 'web',
     commercial_state: 'READY_TO_BUY',
     roi_snapshot: roiSnapshot,
     contact_consent_at: contactConsent ? new Date().toISOString() : null,
     contact_consent_source: contactConsent ? 'laura_lead_form' : null,
+    consent_status: contactConsent ? 'opted_in' : 'unknown',
+    consent_timestamp: contactConsent ? new Date().toISOString() : null,
+    consent_source: contactConsent ? 'laura_lead_form' : null,
   };
   const { data, error } = await admin
     .from('sales_assistant_leads')
@@ -100,15 +106,15 @@ export async function POST(request: Request) {
       updated_at: new Date().toISOString(),
     }).eq('anonymous_id', anonymousId);
   }
-  await recordBusinessEvent({
-    eventName: 'sales_lead_created',
+  await Promise.all(['lead_received', 'sales_lead_created', 'offer_presented'].map((eventName) => recordBusinessEvent({
+    eventName: eventName as 'lead_received' | 'sales_lead_created' | 'offer_presented',
     path: '/',
     anonymousId,
     visitorId: anonymousId,
     sessionId,
     source: 'laura_sales_assistant',
-    idempotencyKey: `laura:lead:${idempotencyKey}`,
-    metadata: { assistant: 'laura', recommendation, sector: lead.sector, primary_problem: lead.primary_problem, contact_consent: contactConsent },
+    idempotencyKey: `laura:lead:${eventName}:${idempotencyKey}`,
+    metadata: { assistant: 'laura', lead_token: persistedToken, recommendation, sector: lead.sector, primary_problem: lead.primary_problem, contact_consent: contactConsent },
     utm: {
       source: lead.utm_source,
       medium: lead.utm_medium,
@@ -119,7 +125,7 @@ export async function POST(request: Request) {
       referrer: lead.referrer,
       landing: lead.landing,
     },
-  }).catch(() => undefined);
+  }).catch(() => undefined)));
 
   return NextResponse.json({ ok: true, leadToken: persistedToken }, { status: 201 });
 }
