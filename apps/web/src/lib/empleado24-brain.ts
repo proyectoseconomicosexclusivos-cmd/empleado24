@@ -13,7 +13,10 @@ export type BrainEventName =
   | 'TechnicalProjectAnalyzed' | 'TechnicalQuoteDrafted'
   | 'ProjectCreated' | 'ProjectFileUploaded' | 'ProjectAnalysisStarted'
   | 'ProjectAnalysisCompleted' | 'MeasurementDetected' | 'MeasurementConfirmed'
-  | 'MeasurementEstimated' | 'BudgetDraftCreated' | 'BudgetReviewed';
+  | 'MeasurementEstimated' | 'BudgetDraftCreated' | 'BudgetReviewed'
+  | 'LeadReceived' | 'LeadContacted' | 'ConversationStarted' | 'NeedDetected'
+  | 'EmployeeRecommended' | 'DemoOffered' | 'DemoStarted' | 'DemoCompleted'
+  | 'ObjectionDetected' | 'OfferPresented' | 'CheckoutStarted' | 'CheckoutAbandoned';
 
 type CustomerInput = {
   companyId: string;
