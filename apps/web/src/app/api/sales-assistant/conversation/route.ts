@@ -3,9 +3,9 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { guardRateLimit } from '@/lib/api-guard';
 
 type ConversationBody = Record<string, unknown>;
-type CommercialState = 'COLD' | 'INTERESTED' | 'VERY_INTERESTED' | 'READY_TO_BUY' | 'QUALIFIED' | 'CUSTOMER' | 'LOST' | 'DO_NOT_CONTACT';
+type CommercialState = 'COLD' | 'INTERESTED' | 'VERY_INTERESTED' | 'READY_TO_BUY' | 'NEW' | 'CONTACTED' | 'QUALIFYING' | 'QUALIFIED' | 'DEMO' | 'PROPOSAL' | 'CHECKOUT' | 'CUSTOMER' | 'LOST' | 'DO_NOT_CONTACT';
 
-const states = new Set<CommercialState>(['COLD', 'INTERESTED', 'VERY_INTERESTED', 'READY_TO_BUY', 'QUALIFIED', 'CUSTOMER', 'LOST', 'DO_NOT_CONTACT']);
+const states = new Set<CommercialState>(['COLD', 'INTERESTED', 'VERY_INTERESTED', 'READY_TO_BUY', 'NEW', 'CONTACTED', 'QUALIFYING', 'QUALIFIED', 'DEMO', 'PROPOSAL', 'CHECKOUT', 'CUSTOMER', 'LOST', 'DO_NOT_CONTACT']);
 
 function text(value: unknown, maximum: number) {
   return typeof value === 'string' ? value.trim().slice(0, maximum) : '';
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
 
   const requestedState = state(body?.commercialState);
   const priorState = existing?.commercial_state as CommercialState | undefined;
-  const stateRank: Record<CommercialState, number> = { COLD: 0, INTERESTED: 1, VERY_INTERESTED: 2, QUALIFIED: 3, READY_TO_BUY: 4, CUSTOMER: 5, LOST: 5, DO_NOT_CONTACT: 6 };
+  const stateRank: Record<CommercialState, number> = { COLD: 0, NEW: 1, INTERESTED: 2, CONTACTED: 3, QUALIFYING: 4, VERY_INTERESTED: 5, QUALIFIED: 6, DEMO: 7, PROPOSAL: 8, READY_TO_BUY: 9, CHECKOUT: 10, CUSTOMER: 11, LOST: 11, DO_NOT_CONTACT: 12 };
   const commercialState = requestedState && (!priorState || stateRank[requestedState] >= stateRank[priorState])
     ? requestedState
     : priorState ?? 'COLD';

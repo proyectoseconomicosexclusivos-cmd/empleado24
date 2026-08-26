@@ -79,7 +79,9 @@ export async function POST(request: Request) {
     fbclid: text(body?.fbclid, 300) || null,
     gclid,
     lead_source: 'web',
-    commercial_state: 'QUALIFIED',
+    // The lead is useful immediately, but Laura still has to guide the next
+    // action. Keep that distinction in the persisted commercial lifecycle.
+    commercial_state: 'QUALIFYING',
     roi_snapshot: roiSnapshot,
     contact_consent_at: contactConsent ? new Date().toISOString() : null,
     contact_consent_source: contactConsent ? 'laura_lead_form' : null,
@@ -106,7 +108,7 @@ export async function POST(request: Request) {
   if (!persistedToken) return NextResponse.json({ error: 'lead_unavailable' }, { status: 503 });
   if (anonymousId) {
     await admin.from('sales_assistant_conversations').update({
-      commercial_state: 'QUALIFIED',
+      commercial_state: 'QUALIFYING',
       conversation_completed_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }).eq('anonymous_id', anonymousId);

@@ -8,7 +8,7 @@ import { employeeShowcase } from '@/lib/employee-showcase';
 import { businessSectors, workdayFor } from '@/lib/personalized-workday';
 
 type Step = 'welcome' | 'sector' | 'size' | 'problem' | 'recommendation' | 'objection' | 'lead' | 'done';
-type CommercialState = 'COLD' | 'INTERESTED' | 'VERY_INTERESTED' | 'READY_TO_BUY' | 'CLIENT' | 'QUALIFIED';
+type CommercialState = 'COLD' | 'INTERESTED' | 'VERY_INTERESTED' | 'READY_TO_BUY' | 'CLIENT' | 'QUALIFIED' | 'QUALIFYING';
 type Identity = { anonymousId: string; sessionId: string; landing: string };
 type SavedConversation = {
   commercial_state: CommercialState;
@@ -126,6 +126,7 @@ const stateCopy: Record<CommercialState, string> = {
   VERY_INTERESTED: 'Ya tengo una recomendación para ti. Te enseño el ahorro estimado.',
   READY_TO_BUY: 'Ya tienes tu equipo recomendado. Puedes activarlo cuando quieras.',
   QUALIFIED: 'Ya tengo los datos necesarios para preparar tu recomendación.',
+  QUALIFYING: 'Estoy preparando la recomendación para tu empresa.',
   CLIENT: 'Gracias por confiar en el equipo. Estoy preparada para ayudarte.',
 };
 
@@ -151,6 +152,7 @@ export function LauraSalesAssistant() {
   const [objection, setObjection] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [whatsappHref, setWhatsappHref] = useState<string | null>(null);
   const [openingMessage, setOpeningMessage] = useState('Hola, soy Laura. Si me dices a qué se dedica tu empresa, en menos de un minuto te enseño cómo trabajaríamos para ti.');
   const activated = useRef(false);
   const lastPointer = useRef<{ x: number; y: number } | null>(null);
@@ -251,6 +253,16 @@ export function LauraSalesAssistant() {
     return () => { window.clearTimeout(demoTimer); window.clearTimeout(trialTimer); };
   }, [visible]);
 
+  useEffect(() => {
+    if (step !== 'done') return;
+    const leadToken = new URLSearchParams(window.location.search).get('laura');
+    if (!leadToken) return;
+    void fetch(`/api/sales-assistant/whatsapp-link?token=${encodeURIComponent(leadToken)}`)
+      .then((response) => response.ok ? response.json() : null)
+      .then((data: { href?: string } | null) => setWhatsappHref(data?.href ?? null))
+      .catch(() => setWhatsappHref(null));
+  }, [step]);
+
   function start() {
     setExitCopy(false);
     if (sector && companySize && problem) { setStep('recommendation'); return; }
@@ -310,7 +322,7 @@ export function LauraSalesAssistant() {
     const data = (await response.json().catch(() => ({}))) as { leadToken?: string };
     if (!response.ok || !data.leadToken) { setError('No he podido guardar tu recomendación. Vuelve a intentarlo.'); setSaving(false); return; }
     analytics('laura_conversation_completed', recommendation.plan, 'conversation_completed');
-    void remember({ action: 'completed', commercialState: 'QUALIFIED', sector, companySize, primaryProblem: problem, recommendation: recommendation.names, roi });
+    void remember({ action: 'completed', commercialState: 'QUALIFYING', sector, companySize, primaryProblem: problem, recommendation: recommendation.names, roi });
     setStep('done'); setSaving(false);
     const next = new URL(window.location.href); next.searchParams.set('laura', data.leadToken);
     window.history.replaceState(null, '', `${next.pathname}${next.search}`);
@@ -334,7 +346,7 @@ export function LauraSalesAssistant() {
     {step === 'recommendation' && <div className="mt-5 rounded-2xl bg-[#efffcf] p-4 text-sm text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]"><p className="font-semibold">Para una {sector || 'empresa'} como la tuya, empezaría con {recommendation.plan}.</p><p className="mt-2 leading-5">Con {roi.monthlyHours} horas recuperadas al mes, a {roi.hourlyValue} €/hora: ahorras {roi.monthlySaving} €, cuesta {roi.monthlyCost} € y el beneficio estimado es {roi.monthlyBenefit} €/mes.</p><div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={beginLeadCapture} className="inline-flex items-center gap-2 rounded-full bg-[#111315] px-4 py-2.5 font-semibold text-white">Guardar mi recomendación <ArrowRight size={15}/></button><button type="button" onClick={showRecommendation} className="rounded-full border border-[#789500] px-4 py-2.5 font-semibold">Ver cómo trabajaría</button></div><button type="button" onClick={() => setStep('objection')} className="mt-3 text-xs font-medium underline">Tengo una duda</button></div>}
     {step === 'objection' && <form action={sendObjection} className="mt-5"><p className="text-sm font-semibold">¿Qué te hace dudar?</p><input className="input mt-3 w-full" name="objection" required placeholder="Por ejemplo: me parece caro" /><button className="mt-3 rounded-full border border-[var(--line)] px-4 py-2 text-sm font-medium">Resolver mi duda</button>{objection && <div className="mt-3 rounded-xl bg-[#efffcf] p-3 text-sm text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]">{priceObjection ? `Lo entiendo. Si recuperas ${roi.monthlyHours} horas, el coste de ${roi.monthlyCost} €/mes equivale a ${Math.max(1, Math.round(roi.monthlyCost / roi.hourlyValue))} horas de trabajo. La estimación deja ${roi.monthlyBenefit} €/mes de margen de tiempo y dinero.` : `Gracias por contármelo. La prueba de 3 días te permite comprobarlo con tu empresa antes de decidir.`}<button type="button" onClick={() => setStep('recommendation')} className="ml-2 font-semibold underline">Volver al plan</button></div>}</form>}
     {step === 'lead' && <form action={createLead} className="mt-5"><p className="text-sm font-semibold">Te envío este plan personalizado.</p><p className="mt-1 text-xs leading-5 text-[var(--muted)]">Solo necesito tu nombre y un email. Lo demás puede esperar.</p><input className="input mt-4 w-full" name="name" required minLength={2} placeholder="Tu nombre" autoComplete="name" /><input className="input mt-3 w-full" name="email" type="email" required placeholder="Tu email de trabajo" autoComplete="email" /><input className="input mt-3 w-full" name="company" minLength={2} placeholder="Empresa (opcional)" autoComplete="organization" /><input className="input mt-3 w-full" name="phone" type="tel" placeholder="WhatsApp (opcional)" autoComplete="tel" /><label className="mt-3 flex gap-2 text-xs leading-5 text-[var(--muted)]"><input name="contactConsent" type="checkbox" className="mt-1" />Acepto que Empleado24 me contacte personalmente sobre esta recomendación.</label><button disabled={saving} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#ccff00] px-4 py-3 text-sm font-semibold text-[#111315] disabled:opacity-60">{saving ? 'Guardando tu plan…' : 'Guardar mi recomendación'} <ArrowRight size={15}/></button>{error && <p role="alert" className="mt-3 text-xs text-[#b23a22]">{error}</p>}</form>}
-    {step === 'done' && <div className="mt-5"><p className="text-sm font-semibold">Tu recomendación está lista.</p><p className="mt-1 text-sm leading-6 text-[var(--muted)]">Empiezas con 3 días de prueba y puedes cancelar cuando quieras.</p><Link href={registerHref} className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#ccff00] px-4 py-2.5 text-sm font-semibold text-[#111315]">Activar mi prueba <ArrowRight size={15}/></Link></div>}
+    {step === 'done' && <div className="mt-5"><p className="text-sm font-semibold">Tu recomendación está lista.</p><p className="mt-1 text-sm leading-6 text-[var(--muted)]">Empiezas con 3 días de prueba y puedes cancelar cuando quieras.</p><div className="mt-4 flex flex-wrap gap-2"><Link href={registerHref} className="inline-flex items-center gap-2 rounded-full bg-[#ccff00] px-4 py-2.5 text-sm font-semibold text-[#111315]">Activar mi prueba <ArrowRight size={15}/></Link>{whatsappHref && <a href={whatsappHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] px-4 py-2.5 text-sm font-semibold">Continuar por WhatsApp <MessageCircle size={15}/></a>}</div></div>}
     {nudge && step !== 'done' && <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-[#d7ed91] bg-[#fbfff0] p-3 text-sm text-[#486500] dark:border-[#4a6412] dark:bg-[#202a05] dark:text-[#d5f899]"><span>{nudge === 'demo' ? '¿Quieres que te enseñe cómo trabajaría con tu empresa?' : 'Hoy puedes probarlo gratis durante 3 días.'}</span>{nudge === 'demo' ? <Link href={`/demo?employee=recepcionista-ia&from=laura`} onClick={openDemo} className="inline-flex shrink-0 items-center gap-1 font-semibold underline">Ver demo <Play size={13}/></Link> : <button type="button" onClick={() => setStep('recommendation')} className="shrink-0 font-semibold underline">Ver plan <Sparkles size={13} className="inline" /></button>}</div>}
   </aside>;
 }
