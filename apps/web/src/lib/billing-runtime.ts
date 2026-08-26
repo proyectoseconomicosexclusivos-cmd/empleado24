@@ -340,7 +340,7 @@ export async function processStripeEvent(event: StripeEvent) {
       idempotencyKey: `stripe:${event.id}:checkout_abandoned`,
       metadata: { session_id: stringValue(object.id), ...attribution },
     }).catch(() => undefined);
-    if (leadId) await (admin as any).from('sales_assistant_leads').update({ checkout_session_id: stringValue(object.id), commercial_state: 'VERY_INTERESTED', updated_at: new Date().toISOString() }).eq('id', leadId).eq('registered_company_id', resolvedCompanyId);
+    if (leadId) await (admin as any).from('sales_assistant_leads').update({ checkout_session_id: stringValue(object.id), commercial_state: 'QUALIFIED', updated_at: new Date().toISOString() }).eq('id', leadId).eq('registered_company_id', resolvedCompanyId);
     await publishEvent({ companyId: resolvedCompanyId, name: 'CheckoutAbandoned', source: 'stripe', idempotencyKey: `brain:stripe:abandoned:${event.id}`, payload: { stripe_event_id: event.id, checkout_session_id: stringValue(object.id), ...attribution } });
   }
   const auditPayload = { processed: false, event_type: event.type, object_id: stringValue(object.id), received_at: new Date().toISOString() } as Json;
@@ -411,6 +411,15 @@ export async function processStripeEvent(event: StripeEvent) {
       idempotencyKey: `stripe:${event.id}:${commercialEvent}`,
       metadata: { provider_event_id: event.id, provider_object_id: stringValue(object.id), purchase_type: purchaseType, ...attribution },
     }).catch(() => undefined);
+  }
+  if (commercialEvent === 'payment_completed') {
+    const paymentId = stringValue(object.payment_intent) ?? stringValue(object.id);
+    const leadUpdate = { commercial_state: 'CUSTOMER', payment_completed_at: new Date().toISOString(), provider_payment_id: paymentId, updated_at: new Date().toISOString() };
+    if (leadId) {
+      await (admin as any).from('sales_assistant_leads').update(leadUpdate).eq('id', leadId).eq('registered_company_id', resolvedCompanyId);
+    } else {
+      await (admin as any).from('sales_assistant_leads').update(leadUpdate).eq('registered_company_id', resolvedCompanyId).eq('commercial_state', 'CHECKOUT');
+    }
   }
   const brainEvent = brainEventForStripeEvent(event, purchaseType);
   if (brainEvent) {

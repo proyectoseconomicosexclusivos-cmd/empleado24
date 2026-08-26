@@ -8,7 +8,7 @@ import { employeeShowcase } from '@/lib/employee-showcase';
 import { businessSectors, workdayFor } from '@/lib/personalized-workday';
 
 type Step = 'welcome' | 'sector' | 'size' | 'problem' | 'recommendation' | 'objection' | 'lead' | 'done';
-type CommercialState = 'COLD' | 'INTERESTED' | 'VERY_INTERESTED' | 'READY_TO_BUY' | 'CLIENT' | 'QUALIFIED' | 'QUALIFYING';
+type CommercialState = 'NEW' | 'CONTACTED' | 'QUALIFYING' | 'QUALIFIED' | 'DEMO' | 'PROPOSAL' | 'CHECKOUT' | 'CUSTOMER' | 'LOST' | 'DO_NOT_CONTACT';
 type Identity = { anonymousId: string; sessionId: string; landing: string };
 type SavedConversation = {
   commercial_state: CommercialState;
@@ -121,13 +121,16 @@ function roiFor(size: string, cost: number): Roi {
 }
 
 const stateCopy: Record<CommercialState, string> = {
-  COLD: 'Cuéntame un poco sobre tu empresa y te ayudo a decidir.',
-  INTERESTED: 'La última vez hablamos de tu empresa. Seguimos desde ahí.',
-  VERY_INTERESTED: 'Ya tengo una recomendación para ti. Te enseño el ahorro estimado.',
-  READY_TO_BUY: 'Ya tienes tu equipo recomendado. Puedes activarlo cuando quieras.',
-  QUALIFIED: 'Ya tengo los datos necesarios para preparar tu recomendación.',
+  NEW: 'Cuéntame un poco sobre tu empresa y te ayudo a decidir.',
+  CONTACTED: 'La última vez hablamos de tu empresa. Seguimos desde ahí.',
   QUALIFYING: 'Estoy preparando la recomendación para tu empresa.',
-  CLIENT: 'Gracias por confiar en el equipo. Estoy preparada para ayudarte.',
+  QUALIFIED: 'Ya tengo los datos necesarios para preparar tu recomendación.',
+  DEMO: 'Ya tengo una recomendación para ti. Te enseño el ahorro estimado.',
+  PROPOSAL: 'Ya tienes tu equipo recomendado. Puedes activarlo cuando quieras.',
+  CHECKOUT: 'Tu activación está preparada.',
+  CUSTOMER: 'Gracias por confiar en el equipo. Estoy preparada para ayudarte.',
+  LOST: 'Si cambian tus necesidades, estaré aquí para ayudarte.',
+  DO_NOT_CONTACT: 'Respetaré que no quieras recibir más comunicaciones.',
 };
 
 const interventionCopy: Record<Intervention, string> = {
@@ -145,7 +148,7 @@ export function LauraSalesAssistant() {
   const [sector, setSector] = useState('');
   const [companySize, setCompanySize] = useState('');
   const [problem, setProblem] = useState('');
-  const [state, setState] = useState<CommercialState>('COLD');
+  const [state, setState] = useState<CommercialState>('NEW');
   const [visitCount, setVisitCount] = useState(0);
   const [exitCopy, setExitCopy] = useState(false);
   const [nudge, setNudge] = useState<'demo' | 'trial' | null>(null);
@@ -182,8 +185,8 @@ export function LauraSalesAssistant() {
     setVisible(true);
     setStep('sector');
     analytics('laura_demo_started', 'hero_primary_cta', 'hero_primary_cta');
-    void remember({ action: 'intent', commercialState: 'INTERESTED' });
-    setState('INTERESTED');
+    void remember({ action: 'intent', commercialState: 'CONTACTED' });
+    setState('CONTACTED');
   }, []);
 
   useEffect(() => {
@@ -268,7 +271,7 @@ export function LauraSalesAssistant() {
     if (sector && companySize && problem) { setStep('recommendation'); return; }
     setStep(sector ? 'size' : 'sector');
     analytics('laura_conversation_started', 'start', 'conversation_started');
-    void remember({ action: 'intent', commercialState: 'INTERESTED' }); setState('INTERESTED');
+    void remember({ action: 'intent', commercialState: 'CONTACTED' }); setState('CONTACTED');
   }
 
   function selectAnswer(field: 'sector' | 'size' | 'problem', value: string) {
@@ -276,23 +279,23 @@ export function LauraSalesAssistant() {
     if (field === 'sector') { setSector(value); setStep('size'); }
     if (field === 'size') { setCompanySize(value); setStep('problem'); }
     if (field === 'problem') { setProblem(value); setStep('recommendation'); }
-    const nextState: CommercialState = field === 'problem' ? 'VERY_INTERESTED' : 'INTERESTED';
+    const nextState: CommercialState = 'QUALIFYING';
     analytics('laura_answer', `${field}:${value}`, `${field}:${value}`);
     void remember({ action: 'answer', field, value, commercialState: nextState, sector: next.sector, companySize: next.companySize, primaryProblem: next.problem }); setState(nextState);
   }
 
   function showRecommendation() {
-    setState('READY_TO_BUY');
+    setState('DEMO');
     const workday = workdayFor(sector);
     analytics('laura_personalized_demo_started', sector || 'Otro', 'personalized_demo_started', { recommendation: recommendation.names, problem, companySize });
-    void remember({ action: 'roi', commercialState: 'READY_TO_BUY', sector, companySize, primaryProblem: problem, recommendation: recommendation.names, roi });
+    void remember({ action: 'roi', commercialState: 'DEMO', sector, companySize, primaryProblem: problem, recommendation: recommendation.names, roi });
     const query = new URLSearchParams({ sector: workday.sector, problem, size: companySize, employee: recommendation.employee });
     window.location.assign(`/demo?${query.toString()}`);
   }
 
   function beginLeadCapture() {
     analytics('laura_lead_capture_opened', recommendation.plan, 'lead_capture_opened', { recommendation: recommendation.names, sector, problem });
-    void remember({ action: 'intent', commercialState: 'VERY_INTERESTED', sector, companySize, primaryProblem: problem, recommendation: recommendation.names });
+    void remember({ action: 'intent', commercialState: 'PROPOSAL', sector, companySize, primaryProblem: problem, recommendation: recommendation.names });
     setStep('lead');
   }
 
@@ -301,7 +304,7 @@ export function LauraSalesAssistant() {
     if (!value) return;
     setObjection(value);
     analytics('laura_objection', value.toLowerCase().includes('car') || value.toLowerCase().includes('precio') ? 'price' : 'other', 'objection');
-    await remember({ action: 'objection', value, commercialState: 'VERY_INTERESTED', sector, companySize, primaryProblem: problem, recommendation: recommendation.names });
+    await remember({ action: 'objection', value, commercialState: 'QUALIFYING', sector, companySize, primaryProblem: problem, recommendation: recommendation.names });
   }
 
   async function createLead(form: FormData) {
@@ -322,7 +325,7 @@ export function LauraSalesAssistant() {
     const data = (await response.json().catch(() => ({}))) as { leadToken?: string };
     if (!response.ok || !data.leadToken) { setError('No he podido guardar tu recomendación. Vuelve a intentarlo.'); setSaving(false); return; }
     analytics('laura_conversation_completed', recommendation.plan, 'conversation_completed');
-    void remember({ action: 'completed', commercialState: 'QUALIFYING', sector, companySize, primaryProblem: problem, recommendation: recommendation.names, roi });
+    void remember({ action: 'completed', commercialState: 'PROPOSAL', sector, companySize, primaryProblem: problem, recommendation: recommendation.names, roi });
     setStep('done'); setSaving(false);
     const next = new URL(window.location.href); next.searchParams.set('laura', data.leadToken);
     window.history.replaceState(null, '', `${next.pathname}${next.search}`);
@@ -339,7 +342,7 @@ export function LauraSalesAssistant() {
   const priceObjection = objection && /(car|precio|coste|costoso)/i.test(objection);
   return <aside id="hablar-con-laura" className="fixed bottom-5 right-4 z-[60] w-[min(92vw,400px)] rounded-[2rem] border border-[var(--line)] bg-[var(--card)] p-5 text-[var(--fg)] shadow-2xl" aria-label="Hablar con Laura">
     <div className="flex items-start gap-3">{laura && <EmployeeAvatar portrait={laura.portrait} name="Laura" className="h-12 w-12 shrink-0 rounded-2xl" objectPosition={laura.portraitPosition} />}<div className="min-w-0 flex-1"><p className="text-sm font-semibold">Laura · Recepcionista IA</p><p className="mt-0.5 text-xs text-[var(--muted)]">Estoy aquí para ayudarte a decidir.</p></div><button type="button" onClick={() => setVisible(false)} className="grid h-8 w-8 place-items-center rounded-full border border-[var(--line)]" aria-label="Cerrar conversación"><X size={15}/></button></div>
-    {step === 'welcome' && <div className="mt-5"><p className="text-[15px] leading-6">{exitCopy ? interventionCopy.exit : visitCount >= 3 ? 'Creo que ya has visto cómo funciona. ¿Quieres activarlo ahora?' : state === 'COLD' ? openingMessage : stateCopy[state]}</p><div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={start} className="inline-flex items-center gap-2 rounded-full bg-[#ccff00] px-4 py-2.5 text-sm font-semibold text-[#111315]">Quiero mi recomendación <MessageCircle size={15}/></button><button type="button" onClick={() => { setVisible(false); analytics('laura_prompt_dismissed', 'not_now', 'prompt_dismissed'); }} className="rounded-full border border-[var(--line)] px-4 py-2.5 text-sm font-medium">Ahora no</button></div></div>}
+    {step === 'welcome' && <div className="mt-5"><p className="text-[15px] leading-6">{exitCopy ? interventionCopy.exit : visitCount >= 3 ? 'Creo que ya has visto cómo funciona. ¿Quieres activarlo ahora?' : state === 'NEW' ? openingMessage : stateCopy[state]}</p><div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={start} className="inline-flex items-center gap-2 rounded-full bg-[#ccff00] px-4 py-2.5 text-sm font-semibold text-[#111315]">Quiero mi recomendación <MessageCircle size={15}/></button><button type="button" onClick={() => { setVisible(false); analytics('laura_prompt_dismissed', 'not_now', 'prompt_dismissed'); }} className="rounded-full border border-[var(--line)] px-4 py-2.5 text-sm font-medium">Ahora no</button></div></div>}
     {step === 'sector' && <Choice title="¿A qué se dedica tu empresa?" choices={options.sector} onSelect={(value) => selectAnswer('sector', value)} />}
     {step === 'size' && <Choice title="¿Cuántas personas trabajan contigo?" choices={options.size} onSelect={(value) => selectAnswer('size', value)} />}
     {step === 'problem' && <Choice title="¿Qué te quita más tiempo ahora?" choices={options.problem.map(([value, label]) => ({ value, label }))} onSelect={(value) => selectAnswer('problem', value)} />}

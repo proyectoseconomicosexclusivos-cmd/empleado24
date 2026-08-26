@@ -38,6 +38,10 @@ export async function POST(request: Request) {
     }).filter(([, value]) => typeof value === 'string' && value.length > 0)) as Record<string, string>;
     const checkout = await stripeAdapter().createCheckout({ companyId: context.company.id, customerId: customer.customerId, plan: billingPlan(plan), successUrl: `${baseUrl}/app/facturacion?checkout=success`, cancelUrl: `${baseUrl}/app/facturacion?checkout=canceled`, attemptId, attribution });
     if ('error' in checkout) return NextResponse.json({ error: checkout.error.code, message: checkout.error.message }, { status: 502 });
+    if (lead?.id) await (context.admin as any).from('sales_assistant_leads')
+      .update({ commercial_state: 'CHECKOUT', updated_at: new Date().toISOString() })
+      .eq('id', lead.id)
+      .eq('registered_company_id', context.company.id);
     await recordBusinessEvent({ eventName: 'checkout_started', userId: context.user.id, companyId: context.company.id, metadata: { plan_key: planKey, ...attribution }, idempotencyKey: `checkout-started:${context.company.id}:${attemptId}` }).catch(() => undefined);
     return NextResponse.json(checkout.data);
   } catch (error) {

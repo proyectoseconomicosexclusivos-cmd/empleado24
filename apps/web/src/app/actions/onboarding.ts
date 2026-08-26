@@ -89,10 +89,10 @@ export async function completeOnboarding(formData: FormData) {
       .maybeSingle();
     if (!lead) return;
     await admin.from('sales_assistant_leads').update({
-      registered_company_id: companyId, commercial_state: 'INTERESTED', updated_at: new Date().toISOString(),
+      registered_company_id: companyId, commercial_state: 'PROPOSAL', updated_at: new Date().toISOString(),
     }).eq('id', lead.id);
     if (lead.anonymous_id) await admin.from('sales_assistant_conversations').update({
-      commercial_state: 'INTERESTED', updated_at: new Date().toISOString(),
+      commercial_state: 'PROPOSAL', updated_at: new Date().toISOString(),
     }).eq('anonymous_id', lead.anonymous_id);
     const customer = await getCustomer({
       companyId, name: lead.name, email: lead.email, companyName: lead.company_name, source: 'laura_sales_assistant',

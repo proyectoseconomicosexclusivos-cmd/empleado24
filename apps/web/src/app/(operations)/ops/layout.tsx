@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Activity, BarChart3, BrainCircuit, Building2, ClipboardCheck, ShieldCheck } from 'lucide-react';
+import { Activity, BarChart3, BrainCircuit, Building2, ClipboardCheck, MessageCircle, Radio, ShieldCheck } from 'lucide-react';
 import { SignOutButton } from '@/components/sign-out-button';
 import { OperationsService } from '@/services/operations-service';
 
@@ -26,6 +26,8 @@ export default async function OperationsLayout({ children }: { children: React.R
             <Link href="/ops/ceo" className="flex items-center gap-3 rounded-xl bg-white/8 px-3 py-2.5"><BrainCircuit size={16} className="text-[#ccff00]" /> CEO IA</Link>
             <Link href="/ops" className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-white/8"><Activity size={16} className="text-[#ccff00]" /> Operaciones</Link>
             <Link href="/ops/business" className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-white/8"><BarChart3 size={16} className="text-[#ccff00]" /> CEO Dashboard</Link>
+            <Link href="/ops/integrations/whatsapp" className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-white/8"><MessageCircle size={16} className="text-[#ccff00]" /> WhatsApp comercial</Link>
+            <Link href="/ops/integrations/meta" className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-white/8"><Radio size={16} className="text-[#ccff00]" /> Meta Lead Ads</Link>
             <Link href="/ops/audit" className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-white/8"><ClipboardCheck size={16} className="text-[#ccff00]" /> Auditoría</Link>
             <span className="mt-1 flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-white/35" aria-disabled="true"><Building2 size={16} /> Sin impersonación</span>
           </nav>
