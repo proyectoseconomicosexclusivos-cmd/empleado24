@@ -23,7 +23,11 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as LeadBody | null;
   const name = text(body?.name, 120);
   const targetEmail = email(body?.email);
-  const companyName = text(body?.companyName, 160);
+  // A commercial lead is useful as soon as we can identify and contact the
+  // person. Company details are progressively enriched by Laura instead of
+  // withholding the lead until every field is known.
+  const companyName = text(body?.companyName, 160) || 'Empresa pendiente de confirmar';
+  const phone = text(body?.phone, 40) || null;
   const anonymousId = text(body?.anonymousId, 120) || null;
   const sessionId = text(body?.sessionId, 120) || null;
   const idempotencyKey = text(body?.idempotencyKey, 240);
@@ -36,7 +40,7 @@ export async function POST(request: Request) {
   const contactConsent = body?.contactConsent === true;
   const gclid = text(body?.gclid, 300) || null;
 
-  if (name.length < 2 || !targetEmail || companyName.length < 2 || !idempotencyKey)
+  if (name.length < 2 || !targetEmail || !idempotencyKey)
     return NextResponse.json({ error: 'invalid_lead' }, { status: 400 });
 
   const limited = await guardRateLimit(request, {
@@ -58,6 +62,7 @@ export async function POST(request: Request) {
     name,
     email: targetEmail,
     company_name: companyName,
+    phone,
     sector: text(body?.sector, 80) || null,
     company_size: text(body?.companySize, 40) || null,
     primary_problem: text(body?.primaryProblem, 80) || null,
@@ -74,7 +79,7 @@ export async function POST(request: Request) {
     fbclid: text(body?.fbclid, 300) || null,
     gclid,
     lead_source: 'web',
-    commercial_state: 'READY_TO_BUY',
+    commercial_state: 'QUALIFIED',
     roi_snapshot: roiSnapshot,
     contact_consent_at: contactConsent ? new Date().toISOString() : null,
     contact_consent_source: contactConsent ? 'laura_lead_form' : null,
@@ -84,7 +89,7 @@ export async function POST(request: Request) {
   };
   const { data, error } = await admin
     .from('sales_assistant_leads')
-    .upsert(lead, { onConflict: 'idempotency_key', ignoreDuplicates: true })
+    .upsert(lead, { onConflict: 'idempotency_key' })
     .select('lead_token')
     .maybeSingle();
   if (error) return NextResponse.json({ error: 'lead_unavailable' }, { status: 503 });
@@ -101,7 +106,7 @@ export async function POST(request: Request) {
   if (!persistedToken) return NextResponse.json({ error: 'lead_unavailable' }, { status: 503 });
   if (anonymousId) {
     await admin.from('sales_assistant_conversations').update({
-      commercial_state: 'READY_TO_BUY',
+      commercial_state: 'QUALIFIED',
       conversation_completed_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }).eq('anonymous_id', anonymousId);
@@ -114,7 +119,7 @@ export async function POST(request: Request) {
     sessionId,
     source: 'laura_sales_assistant',
     idempotencyKey: `laura:lead:${eventName}:${idempotencyKey}`,
-    metadata: { assistant: 'laura', lead_token: persistedToken, recommendation, sector: lead.sector, primary_problem: lead.primary_problem, contact_consent: contactConsent },
+    metadata: { assistant: 'laura', lead_token: persistedToken, recommendation, sector: lead.sector, primary_problem: lead.primary_problem, contact_consent: contactConsent, phone_captured: Boolean(phone) },
     utm: {
       source: lead.utm_source,
       medium: lead.utm_medium,
@@ -128,4 +133,21 @@ export async function POST(request: Request) {
   }).catch(() => undefined)));
 
   return NextResponse.json({ ok: true, leadToken: persistedToken }, { status: 201 });
+}
+
+/**
+ * The token is only ever present in the visitor's own continuation URL. It
+ * lets registration reuse Laura's captured details without putting email or
+ * company name into URL parameters.
+ */
+export async function GET(request: Request) {
+  const leadToken = text(new URL(request.url).searchParams.get('token'), 128);
+  if (!/^[A-Za-z0-9_-]{24,128}$/.test(leadToken)) return NextResponse.json({ error: 'invalid_lead' }, { status: 400 });
+  const { data, error } = await (createAdminClient() as any)
+    .from('sales_assistant_leads')
+    .select('name,email,company_name,recommended_employees')
+    .eq('lead_token', leadToken)
+    .maybeSingle();
+  if (error || !data) return NextResponse.json({ error: 'lead_not_found' }, { status: 404 });
+  return NextResponse.json({ lead: data });
 }
