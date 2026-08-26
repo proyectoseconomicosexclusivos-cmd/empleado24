@@ -8,7 +8,7 @@ import { employeeShowcase } from '@/lib/employee-showcase';
 import { businessSectors, workdayFor } from '@/lib/personalized-workday';
 
 type Step = 'welcome' | 'sector' | 'size' | 'problem' | 'recommendation' | 'objection' | 'lead' | 'done';
-type CommercialState = 'COLD' | 'INTERESTED' | 'VERY_INTERESTED' | 'READY_TO_BUY' | 'CLIENT';
+type CommercialState = 'COLD' | 'INTERESTED' | 'VERY_INTERESTED' | 'READY_TO_BUY' | 'CLIENT' | 'QUALIFIED';
 type Identity = { anonymousId: string; sessionId: string; landing: string };
 type SavedConversation = {
   commercial_state: CommercialState;
@@ -125,6 +125,7 @@ const stateCopy: Record<CommercialState, string> = {
   INTERESTED: 'La última vez hablamos de tu empresa. Seguimos desde ahí.',
   VERY_INTERESTED: 'Ya tengo una recomendación para ti. Te enseño el ahorro estimado.',
   READY_TO_BUY: 'Ya tienes tu equipo recomendado. Puedes activarlo cuando quieras.',
+  QUALIFIED: 'Ya tengo los datos necesarios para preparar tu recomendación.',
   CLIENT: 'Gracias por confiar en el equipo. Estoy preparada para ayudarte.',
 };
 
@@ -277,6 +278,12 @@ export function LauraSalesAssistant() {
     window.location.assign(`/demo?${query.toString()}`);
   }
 
+  function beginLeadCapture() {
+    analytics('laura_lead_capture_opened', recommendation.plan, 'lead_capture_opened', { recommendation: recommendation.names, sector, problem });
+    void remember({ action: 'intent', commercialState: 'VERY_INTERESTED', sector, companySize, primaryProblem: problem, recommendation: recommendation.names });
+    setStep('lead');
+  }
+
   async function sendObjection(form: FormData) {
     const value = String(form.get('objection') ?? '').trim().slice(0, 200);
     if (!value) return;
@@ -292,7 +299,7 @@ export function LauraSalesAssistant() {
     const response = await fetch('/api/sales-assistant/lead', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        name: form.get('name'), email: form.get('email'), companyName: form.get('company'), sector, companySize,
+        name: form.get('name'), email: form.get('email'), companyName: form.get('company'), phone: form.get('phone'), sector, companySize,
         primaryProblem: problem, recommendation: recommendation.names, anonymousId: visitor.anonymousId, sessionId: visitor.sessionId,
         landing: visitor.landing, referrer: document.referrer || null, ...source, roiSnapshot: roi, idempotencyKey,
         contactConsent: form.get('contactConsent') === 'on',
@@ -301,7 +308,7 @@ export function LauraSalesAssistant() {
     const data = (await response.json().catch(() => ({}))) as { leadToken?: string };
     if (!response.ok || !data.leadToken) { setError('No he podido guardar tu recomendación. Vuelve a intentarlo.'); setSaving(false); return; }
     analytics('laura_conversation_completed', recommendation.plan, 'conversation_completed');
-    void remember({ action: 'completed', commercialState: 'READY_TO_BUY', sector, companySize, primaryProblem: problem, recommendation: recommendation.names, roi });
+    void remember({ action: 'completed', commercialState: 'QUALIFIED', sector, companySize, primaryProblem: problem, recommendation: recommendation.names, roi });
     setStep('done'); setSaving(false);
     const next = new URL(window.location.href); next.searchParams.set('laura', data.leadToken);
     window.history.replaceState(null, '', `${next.pathname}${next.search}`);
@@ -322,9 +329,9 @@ export function LauraSalesAssistant() {
     {step === 'sector' && <Choice title="¿A qué se dedica tu empresa?" choices={options.sector} onSelect={(value) => selectAnswer('sector', value)} />}
     {step === 'size' && <Choice title="¿Cuántas personas trabajan contigo?" choices={options.size} onSelect={(value) => selectAnswer('size', value)} />}
     {step === 'problem' && <Choice title="¿Qué te quita más tiempo ahora?" choices={options.problem.map(([value, label]) => ({ value, label }))} onSelect={(value) => selectAnswer('problem', value)} />}
-    {step === 'recommendation' && <div className="mt-5 rounded-2xl bg-[#efffcf] p-4 text-sm text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]"><p className="font-semibold">Para una {sector || 'empresa'} como la tuya, empezaría con {recommendation.plan}.</p><p className="mt-2 leading-5">Con {roi.monthlyHours} horas recuperadas al mes, a {roi.hourlyValue} €/hora: ahorras {roi.monthlySaving} €, cuesta {roi.monthlyCost} € y el beneficio estimado es {roi.monthlyBenefit} €/mes.</p><button type="button" onClick={showRecommendation} className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#111315] px-4 py-2.5 font-semibold text-white">Así trabajaría mi empresa <ArrowRight size={15}/></button><button type="button" onClick={() => setStep('objection')} className="ml-2 mt-2 text-xs font-medium underline">Tengo una duda</button></div>}
+    {step === 'recommendation' && <div className="mt-5 rounded-2xl bg-[#efffcf] p-4 text-sm text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]"><p className="font-semibold">Para una {sector || 'empresa'} como la tuya, empezaría con {recommendation.plan}.</p><p className="mt-2 leading-5">Con {roi.monthlyHours} horas recuperadas al mes, a {roi.hourlyValue} €/hora: ahorras {roi.monthlySaving} €, cuesta {roi.monthlyCost} € y el beneficio estimado es {roi.monthlyBenefit} €/mes.</p><div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={beginLeadCapture} className="inline-flex items-center gap-2 rounded-full bg-[#111315] px-4 py-2.5 font-semibold text-white">Guardar mi recomendación <ArrowRight size={15}/></button><button type="button" onClick={showRecommendation} className="rounded-full border border-[#789500] px-4 py-2.5 font-semibold">Ver cómo trabajaría</button></div><button type="button" onClick={() => setStep('objection')} className="mt-3 text-xs font-medium underline">Tengo una duda</button></div>}
     {step === 'objection' && <form action={sendObjection} className="mt-5"><p className="text-sm font-semibold">¿Qué te hace dudar?</p><input className="input mt-3 w-full" name="objection" required placeholder="Por ejemplo: me parece caro" /><button className="mt-3 rounded-full border border-[var(--line)] px-4 py-2 text-sm font-medium">Resolver mi duda</button>{objection && <div className="mt-3 rounded-xl bg-[#efffcf] p-3 text-sm text-[#486500] dark:bg-[#293500] dark:text-[#d5f899]">{priceObjection ? `Lo entiendo. Si recuperas ${roi.monthlyHours} horas, el coste de ${roi.monthlyCost} €/mes equivale a ${Math.max(1, Math.round(roi.monthlyCost / roi.hourlyValue))} horas de trabajo. La estimación deja ${roi.monthlyBenefit} €/mes de margen de tiempo y dinero.` : `Gracias por contármelo. La prueba de 3 días te permite comprobarlo con tu empresa antes de decidir.`}<button type="button" onClick={() => setStep('recommendation')} className="ml-2 font-semibold underline">Volver al plan</button></div>}</form>}
-    {step === 'lead' && <form action={createLead} className="mt-5"><p className="text-sm font-semibold">Te preparo la incorporación.</p><p className="mt-1 text-xs leading-5 text-[var(--muted)]">Solo necesito estos tres datos. Después eliges tú cuándo activar el equipo.</p><input className="input mt-4 w-full" name="name" required minLength={2} placeholder="Tu nombre" autoComplete="name" /><input className="input mt-3 w-full" name="email" type="email" required placeholder="Tu email de trabajo" autoComplete="email" /><input className="input mt-3 w-full" name="company" required minLength={2} placeholder="Nombre de tu empresa" autoComplete="organization" /><label className="mt-3 flex gap-2 text-xs leading-5 text-[var(--muted)]"><input name="contactConsent" type="checkbox" className="mt-1" />Acepto que Empleado24 me contacte personalmente sobre esta recomendación.</label><button disabled={saving} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#ccff00] px-4 py-3 text-sm font-semibold text-[#111315] disabled:opacity-60">{saving ? 'Preparando tu plan…' : 'Preparar mi incorporación'} <ArrowRight size={15}/></button>{error && <p role="alert" className="mt-3 text-xs text-[#b23a22]">{error}</p>}</form>}
+    {step === 'lead' && <form action={createLead} className="mt-5"><p className="text-sm font-semibold">Te envío este plan personalizado.</p><p className="mt-1 text-xs leading-5 text-[var(--muted)]">Solo necesito tu nombre y un email. Lo demás puede esperar.</p><input className="input mt-4 w-full" name="name" required minLength={2} placeholder="Tu nombre" autoComplete="name" /><input className="input mt-3 w-full" name="email" type="email" required placeholder="Tu email de trabajo" autoComplete="email" /><input className="input mt-3 w-full" name="company" minLength={2} placeholder="Empresa (opcional)" autoComplete="organization" /><input className="input mt-3 w-full" name="phone" type="tel" placeholder="WhatsApp (opcional)" autoComplete="tel" /><label className="mt-3 flex gap-2 text-xs leading-5 text-[var(--muted)]"><input name="contactConsent" type="checkbox" className="mt-1" />Acepto que Empleado24 me contacte personalmente sobre esta recomendación.</label><button disabled={saving} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#ccff00] px-4 py-3 text-sm font-semibold text-[#111315] disabled:opacity-60">{saving ? 'Guardando tu plan…' : 'Guardar mi recomendación'} <ArrowRight size={15}/></button>{error && <p role="alert" className="mt-3 text-xs text-[#b23a22]">{error}</p>}</form>}
     {step === 'done' && <div className="mt-5"><p className="text-sm font-semibold">Tu recomendación está lista.</p><p className="mt-1 text-sm leading-6 text-[var(--muted)]">Empiezas con 3 días de prueba y puedes cancelar cuando quieras.</p><Link href={registerHref} className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#ccff00] px-4 py-2.5 text-sm font-semibold text-[#111315]">Activar mi prueba <ArrowRight size={15}/></Link></div>}
     {nudge && step !== 'done' && <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-[#d7ed91] bg-[#fbfff0] p-3 text-sm text-[#486500] dark:border-[#4a6412] dark:bg-[#202a05] dark:text-[#d5f899]"><span>{nudge === 'demo' ? '¿Quieres que te enseñe cómo trabajaría con tu empresa?' : 'Hoy puedes probarlo gratis durante 3 días.'}</span>{nudge === 'demo' ? <Link href={`/demo?employee=recepcionista-ia&from=laura`} onClick={openDemo} className="inline-flex shrink-0 items-center gap-1 font-semibold underline">Ver demo <Play size={13}/></Link> : <button type="button" onClick={() => setStep('recommendation')} className="shrink-0 font-semibold underline">Ver plan <Sparkles size={13} className="inline" /></button>}</div>}
   </aside>;
