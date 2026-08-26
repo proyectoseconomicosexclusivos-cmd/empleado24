@@ -74,7 +74,10 @@ export async function POST(request: Request) {
   if (existingError) return NextResponse.json({ error: 'conversation_unavailable' }, { status: 503 });
 
   const requestedState = state(body?.commercialState);
-  const priorState = existing?.commercial_state as CommercialState | undefined;
+  // Legacy records can still contain the pre-migration lifecycle values. Treat
+  // those as unranked so the next valid interaction moves them safely into the
+  // canonical lifecycle instead of preserving a stale state indefinitely.
+  const priorState = state(existing?.commercial_state);
   const stateRank: Record<CommercialState, number> = { NEW: 0, CONTACTED: 1, QUALIFYING: 2, QUALIFIED: 3, DEMO: 4, PROPOSAL: 5, CHECKOUT: 6, CUSTOMER: 7, LOST: 7, DO_NOT_CONTACT: 8 };
   const commercialState = requestedState && (!priorState || stateRank[requestedState] >= stateRank[priorState])
     ? requestedState

@@ -81,7 +81,9 @@ export async function POST(request: Request) {
     lead_source: 'web',
     // The lead is useful immediately, but Laura still has to guide the next
     // action. Keep that distinction in the persisted commercial lifecycle.
-    commercial_state: 'QUALIFYING',
+    // QUALIFIED is supported by both the current production constraint and the
+    // canonical lifecycle migration. It keeps capture available during rollout.
+    commercial_state: 'QUALIFIED',
     roi_snapshot: roiSnapshot,
     contact_consent_at: contactConsent ? new Date().toISOString() : null,
     contact_consent_source: contactConsent ? 'laura_lead_form' : null,
@@ -108,7 +110,7 @@ export async function POST(request: Request) {
   if (!persistedToken) return NextResponse.json({ error: 'lead_unavailable' }, { status: 503 });
   if (anonymousId) {
     await admin.from('sales_assistant_conversations').update({
-      commercial_state: 'QUALIFYING',
+      commercial_state: 'QUALIFIED',
       conversation_completed_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }).eq('anonymous_id', anonymousId);

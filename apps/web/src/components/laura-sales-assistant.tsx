@@ -279,7 +279,9 @@ export function LauraSalesAssistant() {
     if (field === 'sector') { setSector(value); setStep('size'); }
     if (field === 'size') { setCompanySize(value); setStep('problem'); }
     if (field === 'problem') { setProblem(value); setStep('recommendation'); }
-    const nextState: CommercialState = 'QUALIFYING';
+    // Use the state already accepted by production until the database
+    // lifecycle migration is applied; the migration preserves this state.
+    const nextState: CommercialState = 'QUALIFIED';
     analytics('laura_answer', `${field}:${value}`, `${field}:${value}`);
     void remember({ action: 'answer', field, value, commercialState: nextState, sector: next.sector, companySize: next.companySize, primaryProblem: next.problem }); setState(nextState);
   }
@@ -304,7 +306,7 @@ export function LauraSalesAssistant() {
     if (!value) return;
     setObjection(value);
     analytics('laura_objection', value.toLowerCase().includes('car') || value.toLowerCase().includes('precio') ? 'price' : 'other', 'objection');
-    await remember({ action: 'objection', value, commercialState: 'QUALIFYING', sector, companySize, primaryProblem: problem, recommendation: recommendation.names });
+    await remember({ action: 'objection', value, commercialState: 'QUALIFIED', sector, companySize, primaryProblem: problem, recommendation: recommendation.names });
   }
 
   async function createLead(form: FormData) {

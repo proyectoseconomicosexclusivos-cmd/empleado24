@@ -87,7 +87,7 @@ export async function POST(request: Request) {
           meta_ad_id: text(provider.ad_id, 120) || null, meta_form_id: text(provider.form_id, 120) || null,
           // Meta supplied enough data to begin qualification, but we do not
           // claim a contact attempt until the opted-in channel is available.
-          commercial_state: 'QUALIFYING', contact_consent_at: optedIn ? new Date().toISOString() : null,
+          commercial_state: 'QUALIFIED', contact_consent_at: optedIn ? new Date().toISOString() : null,
           contact_consent_source: optedIn ? 'meta_lead_form' : null, consent_status: optedIn ? 'opted_in' : 'unknown',
           consent_timestamp: optedIn ? new Date().toISOString() : null, consent_source: optedIn ? 'meta_lead_form' : null,
         }, { onConflict: 'idempotency_key', ignoreDuplicates: true }).select('id,lead_token').maybeSingle();
