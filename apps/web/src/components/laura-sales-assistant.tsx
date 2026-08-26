@@ -295,7 +295,9 @@ export function LauraSalesAssistant() {
   async function createLead(form: FormData) {
     setSaving(true); setError('');
     const visitor = identity(); const source = attribution();
-    const idempotencyKey = `lead:${visitor.sessionId}:${problem}`;
+    // One anonymous visitor owns one progressively enriched lead. Keeping this
+    // stable prevents a second lead when they refine the problem mid-conversation.
+    const idempotencyKey = `lead:${visitor.anonymousId}`;
     const response = await fetch('/api/sales-assistant/lead', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
