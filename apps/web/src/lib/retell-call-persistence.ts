@@ -8,7 +8,7 @@ import { notifyOwner } from '@/lib/owner-notifications';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { inspectCallForSales } from '@/lib/call-sales-insights';
 import { createOpportunityFromReceptionistCall } from '@/lib/sales-runtime';
-import { getCustomer, publishEvent, saveMemory } from '@/lib/empleado24-brain';
+import { createTask, getCustomer, publishEvent, saveMemory } from '@/lib/empleado24-brain';
 import { recordBusinessEvent } from '@/lib/business-events';
 
 type UsageRecordClient = {
@@ -223,6 +223,7 @@ export async function persistRetellCall(input: {
     durationMs: call.durationMs,
     transcript: call.transcript,
     summary: call.summary,
+    analysis: call.analysis,
   });
   const values = {
     company_id: input.companyId,
@@ -357,6 +358,9 @@ export async function persistRetellCall(input: {
       phone: customerPhone,
       source: 'phone',
     }) : null;
+    const custom = object(call.analysis?.custom_analysis_data);
+    const followUpConsent = custom.follow_up_consent === true || custom.follow_up_consent === 'true';
+    const highIntent = ['hot', 'very_hot', 'muy_interesado', 'listo_para_probar', 'cliente'].includes(String(custom.sales_interest_level ?? custom.commercial_intent ?? '').toLocaleLowerCase('es-ES'));
     await Promise.all([createAppointmentFromAnalysis({
       companyId: input.companyId,
       employeeId: input.employeeId,
@@ -380,6 +384,14 @@ export async function persistRetellCall(input: {
         name: 'CallFinished', source: 'retell', idempotencyKey: `brain:call:${call.callId}`,
         payload: { call_id: persisted.id, status: call.status, duration_ms: call.durationMs ?? 0 },
       }),
+      ...(highIntent ? [createTask({
+        companyId: input.companyId,
+        customerId: customer.id,
+        employeeType: 'closer',
+        type: 'follow_up',
+        title: followUpConsent ? 'Seguimiento permitido: llamada con alta intención' : 'Revisar llamada con alta intención (sin permiso de contacto)',
+        metadata: { call_id: persisted.id, consent: followUpConsent, intent: custom.commercial_intent ?? custom.sales_interest_level ?? null },
+      })] : []),
     ] : []),
     ]);
   }

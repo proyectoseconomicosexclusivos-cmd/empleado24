@@ -675,4 +675,46 @@ const appointmentAnalysisFields = [
     description: 'Siguiente paso comercial acordado con el cliente.',
     required: false,
   },
+  {
+    type: 'string',
+    name: 'company_sector',
+    description: 'Sector de la empresa mencionado por la persona, si lo ha indicado.',
+    required: false,
+  },
+  {
+    type: 'string',
+    name: 'company_size',
+    description: 'Tamaño aproximado de empresa indicado por la persona.',
+    required: false,
+  },
+  {
+    type: 'string',
+    name: 'primary_problem',
+    description: 'Problema principal expresado: llamadas, atención al cliente, presupuestos, administración, ventas, agenda, tareas repetitivas u otro.',
+    required: false,
+  },
+  {
+    type: 'string',
+    name: 'recommended_employee',
+    description: 'Empleado o equipo recomendado durante la conversación, únicamente si se llegó a recomendar uno.',
+    required: false,
+  },
+  {
+    type: 'string',
+    name: 'commercial_intent',
+    description: 'Clasificación: curioso, interesado, muy_interesado, listo_para_probar, cliente, no_interesado o no_determinado.',
+    required: false,
+  },
+  {
+    type: 'string',
+    name: 'commercial_objection',
+    description: 'Objeción expresada por la persona, si existe.',
+    required: false,
+  },
+  {
+    type: 'boolean',
+    name: 'follow_up_consent',
+    description: 'Verdadero sólo si la persona autorizó expresamente contacto posterior.',
+    required: false,
+  },
 ];

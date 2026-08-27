@@ -14,6 +14,7 @@ type CallInput = {
   durationMs?: number | null;
   transcript?: string | null;
   summary?: string | null;
+  analysis?: Record<string, unknown> | null;
 };
 
 function firstAgentMessage(transcript: string | null | undefined) {
@@ -26,6 +27,10 @@ export function inspectCallForSales(call: CallInput): CallSalesInsight {
   const transcript = (call.transcript ?? '').trim();
   const userLines = transcript.match(/^(user|caller|cliente)\s*:/gim) ?? [];
   const userResponded = userLines.length > 0;
+  const custom = call.analysis && typeof call.analysis.custom_analysis_data === 'object' && call.analysis.custom_analysis_data && !Array.isArray(call.analysis.custom_analysis_data)
+    ? call.analysis.custom_analysis_data as Record<string, unknown>
+    : {};
+  const classifiedIntent = typeof custom.commercial_intent === 'string' ? custom.commercial_intent.toLocaleLowerCase('es-ES') : '';
   const text = `${transcript}\n${call.summary ?? ''}`.toLocaleLowerCase('es-ES');
   const short = (call.durationMs ?? 0) < 30_000;
 
@@ -40,6 +45,18 @@ export function inspectCallForSales(call: CallInput): CallSalesInsight {
     firstAgentMessage: firstAgentMessage(transcript),
     opportunityLost: 'La persona colgó antes de responder; no hay evidencia de interés ni de que entendiera la propuesta.',
     recommendation: 'Abrir con una frase breve de valor y una sola pregunta: “Soy Laura, de Empleado24. ¿A qué se dedica tu empresa?”',
+  };
+  if (classifiedIntent === 'no_interesado') return {
+    intent: 'NO_INTERESADO', result: 'CONVERSACION_COMPLETADA', userResponded,
+    firstAgentMessage: firstAgentMessage(transcript),
+    opportunityLost: 'La persona indicó que no desea continuar.',
+    recommendation: 'No iniciar seguimiento comercial salvo que otorgue un consentimiento nuevo.',
+  };
+  if (classifiedIntent === 'listo_para_probar') return {
+    intent: 'QUIERE_PRUEBA', result: 'CONVERSACION_COMPLETADA', userResponded,
+    firstAgentMessage: firstAgentMessage(transcript),
+    opportunityLost: 'La persona está lista para probar y necesita un siguiente paso inmediato.',
+    recommendation: 'Ofrecer registro o checkout sólo después de confirmar los datos y el consentimiento.',
   };
   if (/precio|cu[aá]nto cuesta|coste|tarifa/.test(text)) return {
     intent: 'QUIERE_PRECIO', result: 'CONVERSACION_COMPLETADA', userResponded,
