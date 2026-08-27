@@ -1,11 +1,13 @@
 import 'server-only';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { inspectCallForSales } from '@/lib/call-sales-insights';
 
 type EventMetadata = { action?: string; label?: string; device?: string; scroll_depth?: number; plan_key?: string; [key: string]: unknown };
 type Event = { event_name: string; created_at: string; anonymous_id: string | null; visitor_id: string | null; user_id: string | null; company_id: string | null; path: string | null; utm_source: string | null; utm_campaign: string | null; referrer: string | null; landing: string | null; metadata: EventMetadata | null };
 type Conversation = { sector: string | null; objection: string | null; created_at: string };
 type Subscription = { state: string; plan_key: string | null };
-type Lead = { id: string; name: string | null; company_name: string | null; anonymous_id: string | null; registered_user_id: string | null; registered_company_id: string | null; checkout_started_at: string | null; payment_completed_at: string | null; commercial_state: string | null; roi_snapshot: unknown; objections: unknown; demo_opened_at: string | null; created_at: string };
+type Lead = { id: string; name: string | null; company_name: string | null; anonymous_id: string | null; registered_user_id: string | null; registered_company_id: string | null; checkout_started_at: string | null; payment_completed_at: string | null; commercial_state: string | null; roi_snapshot: unknown; objections: unknown; demo_opened_at: string | null; created_at: string; lead_source: string | null };
+type VoiceCall = { status: string | null; started_at: string | null; ended_at: string | null; duration_ms: number | null; transcript: string | null; summary: string | null; error_code: string | null; latency: Record<string, unknown> | null; created_at: string };
 
 const prices: Record<string, number> = { one_employee: 9700, employee_email: 9700, employee_whatsapp: 9700, employee_budget: 19700, employee_closer: 19700, department_commercial: 29700, two_employees: 19700, five_employees: 39700 };
 const visitNames = new Set(['landing_view', 'page_view', 'pricing_view']);
@@ -59,22 +61,25 @@ export type CeoBrief = {
   campaigns: Array<{ source: string; visitors: number; registrations: number; sales: number; mrrCents: number | null; cost: null }>;
   hotLeads: Array<{ label: string; score: number; state: string; reason: string }>;
   investor: { mrrCents: number; arrCents: number; cac: string; ltv: string; churn: string; conversion: string; objectives: string[] };
+  callSales: { total: number; completed: number; under30: number; over60: number; over120: number; retellLeads: number; latest: { durationSeconds: number; result: string; reason: string; summary: string; opportunityLost: string; recommendation: string; firstAgentMessage: string | null; userResponded: boolean; latency: string } | null; alerts: string[] };
 };
 
 export async function buildCeoBrief(now = new Date()): Promise<CeoBrief> {
   const admin = createAdminClient() as any;
   const from = new Date(now.getTime() - 30 * day).toISOString();
-  const [eventsResult, conversationsResult, subscriptionsResult, leadsResult] = await Promise.all([
+  const [eventsResult, conversationsResult, subscriptionsResult, leadsResult, callsResult] = await Promise.all([
     admin.from('business_events').select('event_name,created_at,anonymous_id,visitor_id,user_id,company_id,path,utm_source,utm_campaign,referrer,landing,metadata').gte('created_at', from).order('created_at', { ascending: false }).limit(20_000),
     admin.from('sales_assistant_conversations').select('sector,objection,created_at').gte('created_at', from).limit(5_000),
     admin.from('subscriptions').select('state,plan_key').limit(5_000),
-    admin.from('sales_assistant_leads').select('id,name,company_name,anonymous_id,registered_user_id,registered_company_id,checkout_started_at,payment_completed_at,commercial_state,roi_snapshot,objections,demo_opened_at,created_at').gte('created_at', from).limit(5_000),
+    admin.from('sales_assistant_leads').select('id,name,company_name,anonymous_id,registered_user_id,registered_company_id,checkout_started_at,payment_completed_at,commercial_state,roi_snapshot,objections,demo_opened_at,created_at,lead_source').gte('created_at', from).limit(5_000),
+    admin.from('voice_calls').select('status,started_at,ended_at,duration_ms,transcript,summary,error_code,latency,created_at').gte('created_at', from).order('created_at', { ascending: false }).limit(5_000),
   ]);
   if (eventsResult.error) throw eventsResult.error;
   const events = (eventsResult.data ?? []) as Event[];
   const conversations = (conversationsResult.data ?? []) as Conversation[];
   const subscriptions = (subscriptionsResult.data ?? []) as Subscription[];
   const leads = (leadsResult.data ?? []) as Lead[];
+  const calls = (callsResult.data ?? []) as VoiceCall[];
   const today = todayStart(now);
   const last7 = new Date(now.getTime() - 7 * day);
   const previous7 = new Date(now.getTime() - 14 * day);
@@ -167,6 +172,17 @@ export async function buildCeoBrief(now = new Date()): Promise<CeoBrief> {
   }).filter((lead) => lead.score > 0).sort((a, b) => b.score - a.score).slice(0, 20);
   const change = dataSeven.registrations - previousRaw.registrations;
   const churnDenominator = active.length + canceled.length;
+  const recentCalls = calls.filter((call) => new Date(call.created_at) >= last7);
+  const latestCall = calls[0] ?? null;
+  const latestInsight = latestCall ? inspectCallForSales(latestCall) : null;
+  const latency = latestCall?.latency ?? {};
+  const llm = latency.llm as { p90?: number } | undefined;
+  const tts = latency.tts as { p90?: number } | undefined;
+  const latencyText = llm?.p90 || tts?.p90 ? `LLM p90 ${Math.round(llm?.p90 ?? 0)} ms · voz p90 ${Math.round(tts?.p90 ?? 0)} ms` : 'No disponible';
+  const callAlerts = [
+    recentCalls.length >= 3 && recentCalls.filter((call) => (call.duration_ms ?? 0) < 30_000).length / recentCalls.length >= 0.5 ? 'Muchas llamadas duran menos de 30 segundos: revisar la apertura.' : null,
+    recentCalls.length >= 3 && !leads.some((lead) => lead.lead_source === 'retell') ? 'Hay llamadas sin leads atribuibles a Retell: revisar captura y consentimiento.' : null,
+  ].filter((value): value is string => Boolean(value));
   return {
     generatedAt: now.toISOString(), today: dataToday, sevenDays: dataSeven, mrrCents, funnels, alerts, recommendations, ranking,
     prediction: `Estimación: manteniendo el ritmo de los últimos 7 días, el mes podría cerrar con aproximadamente ${projected} registros adicionales. Es una proyección, no una promesa.`,
@@ -176,6 +192,16 @@ export async function buildCeoBrief(now = new Date()): Promise<CeoBrief> {
     campaigns: campaignRows,
     hotLeads,
     investor: { mrrCents, arrCents: mrrCents * 12, cac: 'No disponible: no hay gasto publicitario conectado.', ltv: active.length && mrrCents ? 'No suficiente: falta histórico de permanencia pagada.' : 'No suficiente: aún no hay base de clientes activos.', churn: churnDenominator ? percent(canceled.length / churnDenominator) : 'Sin muestra', conversion: percent(dataSeven.conversion), objectives: [bottleneck.recommendation, `Elevar la conversión visita → registro hacia ${(targetConversion * 100).toFixed(1)}%.`, 'Mantener los costes de campaña visibles antes de usar CAC o ROI.'] },
+    callSales: {
+      total: recentCalls.length,
+      completed: recentCalls.filter((call) => call.status === 'ended').length,
+      under30: recentCalls.filter((call) => (call.duration_ms ?? 0) < 30_000).length,
+      over60: recentCalls.filter((call) => (call.duration_ms ?? 0) >= 60_000).length,
+      over120: recentCalls.filter((call) => (call.duration_ms ?? 0) >= 120_000).length,
+      retellLeads: leads.filter((lead) => lead.lead_source === 'retell').length,
+      latest: latestCall && latestInsight ? { durationSeconds: Math.round((latestCall.duration_ms ?? 0) / 100) / 10, result: latestInsight.result, reason: latestCall.error_code ?? (latestCall.status === 'ended' ? 'finalizada' : String(latestCall.status ?? 'desconocido')), summary: latestCall.summary || 'Sin resumen disponible.', opportunityLost: latestInsight.opportunityLost, recommendation: latestInsight.recommendation, firstAgentMessage: latestInsight.firstAgentMessage, userResponded: latestInsight.userResponded, latency: latencyText } : null,
+      alerts: callAlerts,
+    },
   };
 }
 

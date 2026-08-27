@@ -6,6 +6,7 @@ import { validGoogleAccessToken } from '@/lib/google-calendar-runtime';
 import { maskPhone } from '@/lib/retell-runtime';
 import { notifyOwner } from '@/lib/owner-notifications';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { inspectCallForSales } from '@/lib/call-sales-insights';
 import { createOpportunityFromReceptionistCall } from '@/lib/sales-runtime';
 import { getCustomer, publishEvent, saveMemory } from '@/lib/empleado24-brain';
 import { recordBusinessEvent } from '@/lib/business-events';
@@ -217,6 +218,12 @@ export async function persistRetellCall(input: {
   const handledWithoutHuman =
     successful && !/transfer/i.test(call.errorCode ?? '') ? (call.durationMs ?? null) : null;
   const now = new Date();
+  const commercial = inspectCallForSales({
+    status: call.status,
+    durationMs: call.durationMs,
+    transcript: call.transcript,
+    summary: call.summary,
+  });
   const values = {
     company_id: input.companyId,
     employee_id: input.employeeId,
@@ -242,7 +249,7 @@ export async function persistRetellCall(input: {
     provider_cost: (call.cost ?? {}) as Json,
     knowledge_used: Boolean(call.knowledgeEvidenceUrl),
     knowledge_evidence_url: call.knowledgeEvidenceUrl,
-    metadata: (call.metadata ?? {}) as Json,
+    metadata: { ...(call.metadata ?? {}), commercial } as Json,
     reconciliation_status: terminal ? 'succeeded' : 'scheduled',
     last_reconciled_at: input.source === 'retell_reconciler' ? now.toISOString() : null,
     next_reconcile_at: new Date(
@@ -339,7 +346,7 @@ export async function persistRetellCall(input: {
         companyId: input.companyId,
         source: 'retell',
         idempotencyKey: `call-completed:${call.callId}`,
-        metadata: { call_id: persisted.id, provider_call_id: call.callId, duration_ms: call.durationMs ?? 0, status: call.status },
+        metadata: { call_id: persisted.id, provider_call_id: call.callId, duration_ms: call.durationMs ?? 0, status: call.status, commercial_intent: commercial.intent, commercial_result: commercial.result },
       }).catch(() => undefined);
     }
   }
