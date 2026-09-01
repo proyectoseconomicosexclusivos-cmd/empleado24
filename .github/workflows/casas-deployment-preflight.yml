@@ -1,0 +1,19 @@
+name: Casas deployment preflight
+on:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  credential-boundary:
+    name: Verify protected deployment boundary
+    runs-on: ubuntu-latest
+    environment: production
+    outputs:
+      credential_available: ${{ steps.boundary.outputs.available }}
+    steps:
+      - id: boundary
+        env:
+          HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+        run: |
+          test -n "$HETZNER_SSH_KEY"
+          echo "available=true" >> "$GITHUB_OUTPUT"
